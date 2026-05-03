@@ -1,0 +1,179 @@
+# ============================================================
+# .gitignore for STM32 C++ Projects
+# Covers STM32CubeIDE, STM32CubeMX, Keil, IAR, PlatformIO, CMake/Make
+# ============================================================
+
+# -------- Build output --------
+build/
+Build/
+out/
+bin/
+obj/
+Debug/
+Release/
+RelWithDebInfo/
+MinSizeRel/
+cmake-build-*/
+
+# -------- Compiled object & binary files --------
+*.o
+*.obj
+*.ko
+*.elf
+*.axf
+*.bin
+*.hex
+*.map
+*.list
+*.lst
+*.su
+*.lss
+*.sym
+*.srec
+*.s19
+
+# -------- Static & shared libraries --------
+*.a
+*.lib
+*.so
+*.so.*
+*.dylib
+*.dll
+
+# -------- Linker / debug / dependency files --------
+*.d
+*.gcno
+*.gcda
+*.gcov
+*.ld.bak
+
+# -------- STM32CubeIDE / Eclipse --------
+.metadata/
+.settings/
+#.cproject
+#.project
+.launch
+*.launch
+.pydevproject
+.recommenders/
+RemoteSystemsTempFiles/
+Debug/
+Release/
+
+# Keep CubeIDE project config if you want to share it:
+# Comment the lines above (.cproject, .project) if so.
+
+# -------- STM32CubeMX --------
+*.ioc.bak
+.mxproject
+
+# -------- Keil uVision (MDK-ARM) --------
+*.uvguix.*
+*.uvoptx
+*.uvproj.bak
+*.uvprojx.bak
+*.bak
+*.dep
+*.crf
+*.lnp
+*.htm
+*.plg
+*.tra
+*.iex
+*.scvd
+Listings/
+Objects/
+
+# -------- IAR Embedded Workbench --------
+*.ewt
+*.ewp.bak
+*.eww.bak
+*.dep
+*.dni
+*.wsdt
+*.wspos
+*.cspy.bat
+*.cspy.ps1
+*.dbgdt
+*.cust
+settings/
+EWARM/Debug/
+EWARM/Release/
+
+# -------- SEGGER Embedded Studio --------
+*.emSession
+*.jlink
+
+# -------- PlatformIO --------
+.pio/
+.pioenvs/
+.piolibdeps/
+.vscode/.browse.c_cpp.db*
+.vscode/c_cpp_properties.json
+.vscode/launch.json
+.vscode/ipch/
+
+# -------- CMake --------
+CMakeCache.txt
+CMakeFiles/
+CMakeScripts/
+cmake_install.cmake
+install_manifest.txt
+CTestTestfile.cmake
+Testing/
+compile_commands.json
+
+# -------- Make --------
+*.mk.bak
+
+# -------- Ninja --------
+.ninja_deps
+.ninja_log
+build.ninja
+
+# -------- VS Code --------
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/extensions.json
+
+# -------- CLion / JetBrains --------
+.idea/
+*.iml
+cmake-build-*/
+
+# -------- OS-generated files --------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# -------- Editors / temp --------
+*.swp
+*.swo
+*~
+*.bak
+*.tmp
+*.log
+*.orig
+
+# -------- Doxygen --------
+docs/html/
+docs/latex/
+doxygen_warnings.log
+
+# -------- Coverage / analysis --------
+coverage/
+*.gcov
+*.profraw
+*.profdata
+cppcheck-result.xml
+
+# -------- Misc --------
+*.zip
+*.tar.gz
+*.7z
