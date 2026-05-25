@@ -37,7 +37,8 @@
 /*                             demonstration code based on hardware semaphore */
 /* This define is present in both CM7/CM4 projects                            */
 /* To comment when developping/debugging on a single core                     */
-#define DUAL_CORE_BOOT_SYNC_SEQUENCE
+//#define DUAL_CORE_BOOT_SYNC_SEQUENCE
+//! NOT Using Both Cores for H7 Test
 
 #if defined(DUAL_CORE_BOOT_SYNC_SEQUENCE)
 #ifndef HSEM_ID_0
@@ -231,7 +232,7 @@ Error_Handler();
 
   /* Initialize USER push-button, will be used to trigger an interrupt each time it's pressed.*/
   BSP_PB_Init(BUTTON_USER, BUTTON_MODE_EXTI);
-
+  BSP_LED_On(LED_GREEN);
   /* Start scheduler */
   osKernelStart();
 
@@ -445,7 +446,14 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+void recurseStackGobbler(void *arg) {
+    volatile uint8_t buf[32]; // force real stack allocation
+    buf[0] = 0xAB;            // actually touch it so compiler can't optimize out
 
+    osDelay(10);              // context switch here — gives scheduler chance to check watermark
+
+    recurseStackGobbler(arg);         // tail recurse, grows stack by ~32 + frame overhead each time
+}
 /* USER CODE END 4 */
 
 /* USER CODE BEGIN Header_StartTestsTask */
@@ -458,6 +466,8 @@ static void MX_GPIO_Init(void)
 void StartTestsTask(void *argument)
 {
   /* USER CODE BEGIN 5 */
+	//! Intentionally create stack overflow
+	recurseStackGobbler(argument);
   /* Infinite loop */
   for(;;)
   {

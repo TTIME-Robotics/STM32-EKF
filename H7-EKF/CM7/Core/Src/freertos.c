@@ -61,6 +61,12 @@ void vApplicationStackOverflowHook(xTaskHandle xTask, signed char *pcTaskName)
    /* Run time stack overflow checking is performed if
    configCHECK_FOR_STACK_OVERFLOW is defined to 1 or 2. This hook function is
    called if a stack overflow is detected. */
+	// Using option 2
+	while (1){
+		BSP_LED_Toggle(LED_RED);
+		uint64_t wait = 0xfffff0;
+		while (wait--);
+	}
 }
 /* USER CODE END 4 */
 
