@@ -9,7 +9,7 @@
 #define EKF_TYPES_H
 #include "limits.h"
 
-#define EKF_ERR (INFINITY)
+#define EKF_ERR (-INFINITY)
 #define EKF_SUCCESS (1);
 
 #endif EKF_TYPES_H

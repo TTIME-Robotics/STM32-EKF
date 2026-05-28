@@ -11,6 +11,10 @@
 namespace EKF {
 
 /**
+ * @brief number of recorded values in state
+ */
+constexpr int STATE_N = 6;
+/**
  * @brief A type containing information about a robot's pose
  */
 typedef struct {
@@ -32,6 +36,17 @@ typedef struct {
 	float heading;
 } Pose_t;
 
+
+
+template<int ROWS, int COLS>
+struct Matrix {
+	float data[ROWS*COLS];
+
+	float& operator()(int r, int c) { return data[r * COLS + c]; }
+	float  operator()(int r, int c) const { return data[r * COLS + c]; }
+};
+template<int N>
+using SquareMatrix = Matrix<N,N>;
 }
 
-#endif EKF_TYPES_H
+#endif // EKF_TYPES_H

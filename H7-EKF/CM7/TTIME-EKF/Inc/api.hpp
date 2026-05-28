@@ -8,7 +8,7 @@
 #ifndef EKF_API_HPP
 #define EKF_API_HPP
 
-#include "types.h"
+#include "types.hpp"
 #include "error.h"
 
 #endif EKF_API_HPP
