@@ -10,6 +10,8 @@
 
 namespace EKF {
 
+constexpr float PI = 3.1415926535f;
+
 /**
  * @brief number of recorded values in state
  */
@@ -35,6 +37,8 @@ typedef struct {
 	float position_y;
 	float heading;
 } Pose_t;
+
+Pose_t get_pose_from_state(State_t state);
 
 }
 

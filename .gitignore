@@ -177,3 +177,6 @@ cppcheck-result.xml
 *.zip
 *.tar.gz
 *.7z
+
+# VS Code Line Counter (extension)
+.VSCodeCounter/

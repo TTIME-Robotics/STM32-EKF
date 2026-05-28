@@ -24,6 +24,9 @@ using SquareMatrix = Matrix<N,N>;
 template<int ROWS, int COLS>
 Matrix<ROWS,COLS> mat_add(const Matrix<ROWS,COLS>& mat_a, const Matrix<ROWS,COLS>& mat_b);
 
+template<int ROWS, int COLS>
+Matrix<ROWS,COLS> mat_sub(const Matrix<ROWS,COLS>& mat_a, const Matrix<ROWS,COLS>& mat_b);
+
 template<int M, int N, int P>
 Matrix<M,P> mat_mult(const Matrix<M,N>& mat_a, const Matrix<N,P>& mat_b);
 
@@ -42,8 +45,12 @@ Matrix<N,1> back_sub(const SquareMatrix<N>& L, const Matrix<N,1>& y);
 template<int N>
 SquareMatrix<N> mat_inv_spd(const SquareMatrix<N>& A);
 
+
+template<int M, int N>
+SquareMatrix<M> propagate_covariance(const Matrix<M,N>& jac, const SquareMatrix<N>& cov);
+
+template<int N>
+SquareMatrix<N> Identity();
+
 }
-
-
-
 #endif // EKF_MAT_MATHS_HPP
