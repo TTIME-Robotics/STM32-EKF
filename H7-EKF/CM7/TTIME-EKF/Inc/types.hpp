@@ -36,17 +36,6 @@ typedef struct {
 	float heading;
 } Pose_t;
 
-
-
-template<int ROWS, int COLS>
-struct Matrix {
-	float data[ROWS*COLS];
-
-	float& operator()(int r, int c) { return data[r * COLS + c]; }
-	float  operator()(int r, int c) const { return data[r * COLS + c]; }
-};
-template<int N>
-using SquareMatrix = Matrix<N,N>;
 }
 
 #endif // EKF_TYPES_H

@@ -10,6 +10,7 @@
 #define EKF_EKF_HPP
 
 #include "types.hpp"
+#include "matrix_maths.hpp"
 #include <cstdint>
 
 namespace EKF {

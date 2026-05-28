@@ -8,6 +8,7 @@
 
 #include "ekf.hpp"
 #include "types.hpp"
+#include "matrix_maths.hpp"
 using namespace EKF;
 
 EK_filter::EK_filter(State_t init_state, const SquareMatrix<STATE_N>& init_cov)
