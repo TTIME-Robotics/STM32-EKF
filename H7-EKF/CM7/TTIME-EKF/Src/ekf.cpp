@@ -33,7 +33,7 @@ int32_t EK_filter::predict(
 
 template<int MEAS_DIM>
 int32_t EK_filter::update(
-		const Matrix<MEAS_DIM, 1>& innovation,
+		const Vector<MEAS_DIM>& innovation,
 		const Matrix<MEAS_DIM,STATE_N>& jac_H,
 		const SquareMatrix<MEAS_DIM>& sensor_noise,
 		uint32_t timestamp
@@ -58,7 +58,7 @@ void EK_filter::set_state(const State_t state, const SquareMatrix<STATE_N>& stat
 	state_estimate = state;
 	state_covariance = state_cov;
 }
-void EK_filter::set_state(const Matrix<STATE_N,1> state, const SquareMatrix<STATE_N>& state_cov) {
+void EK_filter::set_state(const Vector<STATE_N> state, const SquareMatrix<STATE_N>& state_cov) {
 	state_estimate.position_x =  state(0,0);
 	state_estimate.position_y =  state(1,0);
 	state_estimate.velocity_u =  state(2,0);

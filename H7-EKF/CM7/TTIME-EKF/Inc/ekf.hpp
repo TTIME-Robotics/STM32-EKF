@@ -53,7 +53,7 @@ public:
 	 */
 	template<int MEAS_DIM>
 	int32_t update(
-			const Matrix<MEAS_DIM, 1>& innovation,
+			const Vector<MEAS_DIM>& innovation,
 			const Matrix<MEAS_DIM,STATE_N>& jac_H,
 			const SquareMatrix<MEAS_DIM>& sensor_noise,
 			uint32_t timestamp
@@ -65,14 +65,18 @@ public:
 	 * @param state_cov The covariance of this state
 	 */
 	void set_state(const State_t state, const SquareMatrix<STATE_N>& state_cov);
-	void set_state(const Matrix<STATE_N,1> state, const SquareMatrix<STATE_N>& state_cov);
+	void set_state(const Vector<STATE_N> state, const SquareMatrix<STATE_N>& state_cov);
 
 	/**
 	 * @brief Get the state
 	 * @return The state
 	 */
 	State_t get_state() const;
-	Matrix<STATE_N,1> get_state_mat() const;
+	/**
+	 * @breif Get the state as a matrix (vector)
+	 * @return The state matrix
+	 */
+	Vector<STATE_N> get_state_mat() const;
 	/**
 	 * @brief Get the pose (position, heading)
 	 * @return The pose

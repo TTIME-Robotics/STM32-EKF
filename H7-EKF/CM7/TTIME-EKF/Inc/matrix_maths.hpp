@@ -19,6 +19,8 @@ struct Matrix {
 };
 template<int N>
 using SquareMatrix = Matrix<N,N>;
+template<int N>
+using Vector = Matrix<N,1>;
 
 
 template<int ROWS, int COLS>
