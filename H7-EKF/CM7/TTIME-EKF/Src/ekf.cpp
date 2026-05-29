@@ -26,6 +26,8 @@ int32_t EK_filter::predict(
 	const SquareMatrix<STATE_N> propagated_cov = propagate_covariance<STATE_N,STATE_N>(jac_F, state_covariance);
 	state_covariance = mat_add<STATE_N,STATE_N>(propagated_cov, process_noise);
 	estimate_timestamp = timestamp;
+	last_predict_timestamp = timestamp;
+
 	return EKF_SUCCESS;
 }
 
@@ -47,6 +49,7 @@ int32_t EK_filter::update(
 
 	set_state(state_mat, new_cov);
 	estimate_timestamp = timestamp;
+	last_update_timestamp = timestamp;
 
 	return EKF_SUCCESS;
 }
@@ -107,4 +110,16 @@ Pose_t get_pose_from_state(State_t state) {
 	float heading_rad = fmodf(2.5f*PI - angle_rad, PI*2.0f);
 	out.heading = heading_rad * (180.0f / PI);
 	return out;
+}
+
+uint32_t EK_filter::get_last_update_timestamp() const {
+	return last_update_timestamp;
+}
+
+uint32_t EK_filter::get_last_predict_timestamp() const {
+	return last_predict_timestamp;
+}
+
+uint32_t EK_filter::get_estimate_timestamp() const {
+	return estimate_timestamp;
 }

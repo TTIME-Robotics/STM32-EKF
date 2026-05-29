@@ -78,10 +78,28 @@ public:
 	 * @return The pose
 	 */
 	Pose_t get_pose() const;
+
+	/**
+	 * @brief Get the timestamp of the last update
+	 * @return The timestamp
+	 */
+	uint32_t get_last_update_timestamp() const;
+	/**
+	 * @brief Get the timestamp of the last update
+	 * @return The timestamp
+	 */
+	uint32_t get_last_predict_timestamp() const;
+	/**
+	 * @brief Get the timestamp of the last estimate
+	 * @return The timestamp
+	 */
+	uint32_t get_estimate_timestamp() const;
 private:
 	State_t state_estimate; // x, current state estimate
 	SquareMatrix<STATE_N> state_covariance; // P, current state covariance
 	uint32_t estimate_timestamp; // The tick when estimate was last updated/predicted
+	uint32_t last_update_timestamp; // The tick when estimate was last updated
+	uint32_t last_predict_timestamp; // The tick when estimate was last predicted
 };
 
 }
