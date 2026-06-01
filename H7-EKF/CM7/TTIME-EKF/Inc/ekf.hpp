@@ -108,4 +108,6 @@ private:
 
 }
 
+#include "ekf.tpp"
+
 #endif // EKF_EKF_HPP
