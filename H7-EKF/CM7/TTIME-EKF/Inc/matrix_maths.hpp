@@ -20,10 +20,10 @@ struct Matrix {
 template<int N>
 using SquareMatrix = Matrix<N,N>;
 template<int N>
-struct Vector : public Matrix<N,1> {
-	float& operator()(int n) { return data[n]; }
-	float  operator()(int n) const { return data[n]; }
-};
+using Vector = Matrix<N,1>;
+
+template<int ROWS, int COLS>
+Matrix<ROWS,COLS> Zero;
 
 
 template<int ROWS, int COLS>

@@ -23,6 +23,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "api.hpp"
+#include <stdio.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -446,14 +447,6 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-void recurseStackGobbler(void *arg) {
-    volatile uint8_t buf[32]; // force real stack allocation
-    buf[0] = 0xAB;            // actually touch it so compiler can't optimize out
-
-    osDelay(10);              // context switch here — gives scheduler chance to check watermark
-
-    recurseStackGobbler(arg);         // tail recurse, grows stack by ~32 + frame overhead each time
-}
 /* USER CODE END 4 */
 
 /* USER CODE BEGIN Header_StartTestsTask */
@@ -466,11 +459,32 @@ void recurseStackGobbler(void *arg) {
 void StartTestsTask(void *argument)
 {
   /* USER CODE BEGIN 5 */
-	//! Intentionally create stack overflow
-	recurseStackGobbler(argument);
+	EKF::State_t state = {
+			.position_x = 0,
+			.position_y = 0,
+			.velocity_u = 0,
+			.velocity_v = 0,
+			.angle = 3.14159265359f/2.0f,
+			.angular_vel = 0
+	};
+	EKF::SquareMatrix<6> certainty = EKF::Zero<6,6>;
+	EKF::EK_filter filter(state, certainty);
+	uint32_t timestamp;
+	EKF::IMU::IMU_variances_t variances_inp = {
+			.variance_ax=0,
+			.variance_ay=0,
+			.variance_angular_rate=0
+	};
   /* Infinite loop */
   for(;;)
   {
+	  timestamp = osKernelGetTickCount();
+	  EKF::IMU::predict(&filter, 0.2f, 0, 0, variances_inp, timestamp);
+	  EKF::Pose_t pose = filter.get_pose();
+
+	  char msg[32];
+	  sprintf(msg, "%02f,%02f,%02f\r\n", pose.position_x, pose.position_y, pose.heading);
+
     osDelay(1);
   }
   /* USER CODE END 5 */

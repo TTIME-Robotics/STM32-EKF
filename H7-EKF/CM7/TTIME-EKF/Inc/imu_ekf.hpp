@@ -13,14 +13,21 @@
 
 namespace EKF::IMU {
 
+	typedef struct {
+		float variance_ax;
+		float variance_ay;
+		float variance_angular_rate;
+	} IMU_variances_t;
+
 	/**
 	 * @brief Predict using acceleration and angular rate
 	 * @param filter reference to the generic EK filter
 	 * @param imu_dat a Vector of the longitudinal and lateral accelerations and the angular rate
+	 * @param variances The variances of input data
 	 * @param timestamp The current tick
 	 * @return EKF_SUCCESS if successful, EKF_ERROR if not
 	 */
-	int32_t predict(const EK_filter* filter, const Vector<3>& imu_dat, uint32_t timestamp);
+	int32_t predict(EK_filter* filter, const Vector<3>& imu_dat, const IMU_variances_t& variances, uint32_t timestamp);
 	/**
 	 * @brief Predict using acceleration and angular rate
 	 * @param filter reference to the generic EK filter
@@ -30,7 +37,7 @@ namespace EKF::IMU {
 	 * @param timestamp The current tick
 	 * @return EKF_SUCCESS if successful, EKF_ERROR if not
 	 */
-	int32_t predict(const EK_filter* filter, float ax, float ay, float angular_rate, uint32_t timestamp);
+	int32_t predict(EK_filter* filter, float ax, float ay, float angular_rate, const IMU_variances_t& variances, uint32_t timestamp);
 
 	/**
 	 * @brief Predict using acceleration only
@@ -39,7 +46,7 @@ namespace EKF::IMU {
 	 * @param timestamp The current tick
 	 * @return EKF_SUCCESS if successful, EKF_ERROR if not
 	 */
-	int32_t predict_accel_only(const EK_filter* filter, const Vector<2>& accel_dat, uint32_t timestamp);
+	int32_t predict_accel_only(EK_filter* filter, const Vector<2>& accel_dat, uint32_t timestamp);
 	/**
 	 * @brief Predict using acceleration only
 	 * Assumes constant angular rate
@@ -49,7 +56,7 @@ namespace EKF::IMU {
 	 * @param timestamp The current tick
 	 * @return EKF_SUCCESS if successful, EKF_ERROR if not
 	 */
-	int32_t predict_accel_only(const EK_filter* filter, float ax, float ay, uint32_t timestamp);
+	int32_t predict_accel_only(EK_filter* filter, float ax, float ay, uint32_t timestamp);
 
 	/**
 	 * @brief Predict using the angular rate only
@@ -59,7 +66,7 @@ namespace EKF::IMU {
 	 * @param timestamp The current tick
 	 * @return EKF_SUCCESS if successful, EKF_ERROR if not
 	 */
-	int32_t predict_gyro_only(const EK_filter* filter, float angular_rate, uint32_t timestamp);
+	int32_t predict_gyro_only(EK_filter* filter, float angular_rate, uint32_t timestamp);
 
 	/**
 	 * @brief Update using the gyro
@@ -67,7 +74,7 @@ namespace EKF::IMU {
 	 * @param angular_rate
 	 * @return EKF_SUCCESS if successful, EKF_ERROR if not
 	 */
-	int32_t update_gyro(const EK_filter* filter, float angular_rate);
+	int32_t update_gyro(EK_filter* filter, float angular_rate);
 
 	/**
 	 * @brief update using acceleration from a centripetal model
@@ -75,7 +82,7 @@ namespace EKF::IMU {
 	 * @param accel_dat A vector of the longitudinal/lateral acceleration data
 	 * @return EKF_SUCCESS if successful, EKF_ERROR if not
 	 */
-	int32_t update_accel(const EK_filter* filter, const Vector<2>& accel_dat);
+	int32_t update_accel(EK_filter* filter, const Vector<2>& accel_dat);
 
 	/**
 	 * @brief update using acceleration from a centripetal model
@@ -84,7 +91,7 @@ namespace EKF::IMU {
 	 * @param ay Lateral acceleration
 	 * @return EKF_SUCCESS if successful, EKF_ERROR if not
 	 */
-	int32_t update_accel(const EK_filter* filter, float ax, float ay);
+	int32_t update_accel(EK_filter* filter, float ax, float ay);
 }
 
-#endif EKF_IMU_HPP
+#endif //EKF_IMU_HPP
