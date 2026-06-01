@@ -184,7 +184,7 @@ SquareMatrix<N> mat_inv_spd(const SquareMatrix<N>& A)
 }
 
 template<int M, int N>
-SquareMatrix<M> propagate_covariance(const SquareMatrix<N> jac, const SquareMatrix<N> cov){
+SquareMatrix<M> propagate_covariance(const Matrix<M,N>& jac, const SquareMatrix<N>& cov){
 	return mat_mult<M,N,M>(mat_mult<M,N,M>(jac, cov), mat_transpose<M,N>(jac));
 }
 

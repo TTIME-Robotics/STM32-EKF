@@ -505,16 +505,16 @@ void StartTestsTask(void *argument)
 {
   /* USER CODE BEGIN 5 */
 	EKF::State_t state = {
-			.position_x = 0,
+			.position_x = -15.0f,
 			.position_y = 0,
-			.velocity_u = 0,
+			.velocity_u = 7.5f,
 			.velocity_v = 0,
 			.angle = 3.14159265359f/2.0f,
-			.angular_vel = 0
+			.angular_vel = -0.133333f
 	};
 	EKF::SquareMatrix<6> certainty = EKF::Zero<6,6>;
-	EKF::EK_filter filter(state, certainty);
-	uint32_t timestamp;
+	uint32_t timestamp = osKernelGetTickCount();
+	EKF::EK_filter filter(state, certainty, timestamp);
 	EKF::IMU::IMU_variances_t variances_inp = {
 			.variance_ax=0,
 			.variance_ay=0,
@@ -524,13 +524,13 @@ void StartTestsTask(void *argument)
   for(;;)
   {
 	  timestamp = osKernelGetTickCount();
-	  EKF::IMU::predict(&filter, 0.2f, 0, 0, variances_inp, timestamp);
+	  EKF::IMU::predict(&filter, 0, 0, 0.5f, variances_inp, timestamp);
 	  EKF::Pose_t pose = filter.get_pose();
 
 	  char msg[32U];
 	  sprintf(msg, "%02f,%02f,%02f\r\n", pose.position_x, pose.position_y, pose.heading);
 	  HAL_UART_Transmit(&huart3, (uint8_t*)msg, strlen(msg), 1000U);
-    osDelay(1000U);
+    osDelay(50U);
   }
   /* USER CODE END 5 */
 }

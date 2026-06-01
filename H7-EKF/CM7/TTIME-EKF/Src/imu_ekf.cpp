@@ -41,7 +41,7 @@ int32_t IMU::predict(EK_filter* filter, float ax, float ay, float angular_rate, 
 
 	SquareMatrix<STATE_N> jac_F = Identity<STATE_N>();
 	jac_F(0,2) = cam*dt; jac_F(0,3) = -sim*dt; jac_F(0,4) = (-vlong_mid*sim - vlat_mid*cam)*dt; jac_F(0,5) = 0.5f*jac_F(0,4);
-	jac_F(1,2) = sim*dt; jac_F(1,3) = cam*dt;  jac_F(1,4) = (vlong_mid*cam - vlat_mid*sim)*dt; jac_F(1,5) = 0.5f*jac_F(1,5);
+	jac_F(1,2) = sim*dt; jac_F(1,3) = cam*dt;  jac_F(1,4) = (vlong_mid*cam - vlat_mid*sim)*dt; jac_F(1,5) = 0.5f*jac_F(1,4);
 	jac_F(4,5) = dt;
 
 

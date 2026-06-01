@@ -13,8 +13,10 @@
 #include <math.h>
 using namespace EKF;
 
-EK_filter::EK_filter(State_t init_state, const SquareMatrix<STATE_N>& init_cov)
-	: state_estimate(init_state), state_covariance(init_cov) {}
+EK_filter::EK_filter(State_t init_state, const SquareMatrix<STATE_N>& init_cov, uint32_t time)
+	: state_estimate(init_state), state_covariance(init_cov),
+	  last_predict_timestamp(time), last_update_timestamp(time),
+	  estimate_timestamp (time) {}
 
 int32_t EK_filter::predict(
 		const State_t new_state,
