@@ -39,24 +39,29 @@ void EK_filter::set_state(const State_t state, const SquareMatrix<STATE_N>& stat
 	state_estimate = state;
 	state_covariance = state_cov;
 }
-void EK_filter::set_state(const Vector<STATE_N> state, const SquareMatrix<STATE_N>& state_cov) {
-	state_estimate.position_x =  state(0,0);
-	state_estimate.position_y =  state(1,0);
-	state_estimate.velocity_u =  state(2,0);
-	state_estimate.velocity_v =  state(3,0);
-	state_estimate.angle =       state(4,0);
-	state_estimate.angular_vel = state(5,0);
-}
-
-State_t EK_filter::get_state() const {
-	return state_estimate;
-}
 
 float normalise_angle(float angle) {
 	angle += PI;
 	angle = fmodf(angle, PI*2.0f);
 	angle -= PI;
 	return angle;
+}
+
+
+void EK_filter::set_state(const Vector<STATE_N> state, const SquareMatrix<STATE_N>& state_cov) {
+	state_estimate.position_x =  state(0,0);
+	state_estimate.position_y =  state(1,0);
+	state_estimate.velocity_u =  state(2,0);
+	state_estimate.velocity_v =  state(3,0);
+	state_estimate.angle =       normalise_angle(state(4,0));
+	state_estimate.angular_vel = state(5,0);
+
+
+	state_covariance = state_cov;
+}
+
+State_t EK_filter::get_state() const {
+	return state_estimate;
 }
 
 Pose_t EK_filter::get_pose() const {
