@@ -693,13 +693,14 @@ void StartImuTask(void *argument)
 
 	  process_accel_measurements(&accel_dat, accel_vec);
 	  process_gryo_measurements(&gyro_dat, gyro_vec);
-
+	  /*
 	  low_pass(&ax_filt, accel_vec(0,0)); accel_vec(0,0)=ax_filt.out;
 	  low_pass(&ay_filt, accel_vec(1,0)); accel_vec(1,0)=ay_filt.out;
 	  low_pass(&az_filt, accel_vec(2,0)); accel_vec(2,0)=az_filt.out;
 	  low_pass(&gx_filt, gyro_vec(0,0)); gyro_vec(0,0)=gx_filt.out;
 	  low_pass(&gy_filt, gyro_vec(1,0)); gyro_vec(1,0)=gy_filt.out;
-	  low_pass(&gz_filt, gyro_vec(2,0)); gyro_vec(2,0)=gz_filt.out;
+	  low_pass(&gz_filt, gyro_vec(2,0)); gyro_vec(2,0)=gz_filt.out; */
+	  // ! Skip low pass filtering for calibrations
 
 	  Vector<3> useable_data = {
 			  .data = {
@@ -709,9 +710,13 @@ void StartImuTask(void *argument)
 			  }
 	  };
 
-	  osMessageQueuePut(imuDataQueueHandle, &useable_data, 0U, osWaitForever);
+	  //osMessageQueuePut(imuDataQueueHandle, &useable_data, 0U, osWaitForever);
 
-    osDelay(50U);
+	  char msg[256U];
+	  sprintf(msg, "%f,%f,%f,%f,%f,%f\r\n", accel_vec(0,0),accel_vec(1,0),accel_vec(2,0),gyro_vec(0,0),gyro_vec(1,0),gyro_vec(2,0));
+	  HAL_UART_Transmit(&huart3, (uint8_t*)msg, strlen(msg), osWaitForever);
+
+    osDelay(10U);
   }
   /* USER CODE END StartImuTask */
 }
