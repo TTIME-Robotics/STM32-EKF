@@ -10,6 +10,7 @@ ser = serial.Serial(
 
 
 def collect_measurements(samples):
+    ser.read_all()
     data = []
 
     def safe_parse(line):
@@ -18,11 +19,18 @@ def collect_measurements(samples):
         # Must have exactly ax,ay,az,gx,gy,gz
         if len(parts) != 6:
             return None
+        
 
         try:
-            return [float(p) for p in parts]
+            floats =  [float(p) for p in parts]
         except ValueError:
+            print("error")
             return None
+        
+        if (floats[0]**2 + floats[1]**2 + floats[2]**2)**0.5 >= 15:
+            print("Erroneous measurement")
+            return None
+        return floats
 
     collected = 0
 
@@ -57,7 +65,7 @@ def main():
 
     print(all_data)
     t = time.time()
-    np.savetxt(f"Samples {t}.csv", all_data, delimiter=",")
+    np.savetxt(f"Samples.csv", all_data, delimiter=",")
 
 
 main()

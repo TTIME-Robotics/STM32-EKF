@@ -716,7 +716,7 @@ void StartImuTask(void *argument)
 	  sprintf(msg, "%f,%f,%f,%f,%f,%f\r\n", accel_vec(0,0),accel_vec(1,0),accel_vec(2,0),gyro_vec(0,0),gyro_vec(1,0),gyro_vec(2,0));
 	  HAL_UART_Transmit(&huart3, (uint8_t*)msg, strlen(msg), osWaitForever);
 
-    osDelay(10U);
+    osDelay(50U);
   }
   /* USER CODE END StartImuTask */
 }
