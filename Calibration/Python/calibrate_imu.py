@@ -50,53 +50,46 @@ def calibrate_accelerometer_ms2(raw_data_ms2):
 # ==========================================================
 if __name__ == "__main__":
     g = 9.80665
-    csv_filename = 'Samples.csv' 
+    csv_filename = input("CSV filename: ")
     
     # --------------------------------------------------------
     # STEP 1: Load CSV using standard Python file operations
     # --------------------------------------------------------
-    try:
-        data_list = []
-        with open(csv_filename, 'r') as f:
-            lines = f.readlines()
-            
-            # Check if the first line is a header (contains non-numeric characters)
-            start_row = 0
-            try:
-                float(lines[0].split(',')[0])
-            except ValueError:
-                start_row = 1 # Skip header line
-                
-            for line in lines[start_row:]:
-                if line.strip(): # Skip empty lines
-                    row = [float(val) for val in line.split(',')]
-                    data_list.append(row[:3]) # Grab first 3 columns (X, Y, Z)
-                    
-        raw_data = np.array(data_list)
-        print(f"Successfully loaded {raw_data.shape[0]} data points from {csv_filename}.")
+    list_accel = []
+    list_gyro = []
+    with open(csv_filename, 'r') as f:
+        lines = f.readlines()
         
-    except Exception as e:
-        print(f"Error loading CSV file: {e}")
-        print("Falling back to generating synthetic full-coverage data for demonstration...")
-        # Fallback dummy data generation if file isn't found
-        num_points = 500
-        phi = np.random.uniform(0, 2 * np.pi, num_points)
-        theta = np.arccos(np.random.uniform(-1, 1, num_points))
-        x_ideal = g * np.sin(theta) * np.cos(phi)
-        y_ideal = g * np.sin(theta) * np.sin(phi)
-        z_ideal = g * np.cos(theta)
-        raw_data = np.column_stack([x_ideal, y_ideal, z_ideal]) + np.array([0.5, -0.3, 0.2])
+        # Check if the first line is a header (contains non-numeric characters)
+        start_row = 0
+        try:
+            float(lines[0].split(',')[0])
+        except ValueError:
+            start_row = 1 # Skip header line
+            
+        for line in lines[start_row:]:
+            if line.strip(): # Skip empty lines
+                row = [float(val) for val in line.split(',')]
+                list_accel.append(row[:3]) # Grab first 3 columns (X, Y, Z)
+                list_gyro.append(row[3:6]) # Take gryo measurements
+                    
+        raw_data_accel = np.array(list_accel)
+        raw_data_gyro = np.array(list_gyro)
+        print(f"Successfully loaded {raw_data_accel.shape[0]} data points from {csv_filename}.")
 
     # --------------------------------------------------------
     # STEP 2: Run Calibration
     # --------------------------------------------------------
-    M_inv, B = calibrate_accelerometer_ms2(raw_data)
-    calibrated_data = (M_inv.dot((raw_data - B.T).T)).T
-    
-    print("\n--- Extracted Parameters for your STM32 EKF ---")
+    M_inv, B = calibrate_accelerometer_ms2(raw_data_accel)
+    calibrated_data = (M_inv.dot((raw_data_accel - B.T).T)).T
+
+    gyro_biases = np.mean(raw_data_gyro, axis=0)
+    print("\n-- Gryo biases ---")
+    print(f"{gyro_biases}")
+    print("\n--- Extracted Parameters for accelerometer ---")
     print(f"Bias Vector B (m/s²):\n{B.flatten()}")
     print(f"Correction Matrix M_inv:\n{M_inv}\n")
-    norm_before = np.mean(np.linalg.norm(raw_data, axis=1))
+    norm_before = np.mean(np.linalg.norm(raw_data_accel, axis=1))
     norm_after = np.mean(np.linalg.norm(calibrated_data, axis=1))
     print(f"Before Calibration: |g| = {norm_before}")
     print(f"After Calibration: |g| = {norm_after}\n")
@@ -144,7 +137,7 @@ if __name__ == "__main__":
     ax2.legend()
     
     # Dynamic axis limit fitting based on data boundaries
-    all_data = np.vstack([raw_data, calibrated_data])
+    all_data = np.vstack([raw_data_accel, calibrated_data])
     max_val = np.max(np.abs(all_data)) * 1.2
     for ax in [ax1, ax2]:
         ax.set_xlim(-max_val, max_val)
