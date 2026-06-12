@@ -8,6 +8,7 @@
 #include "ekf.hpp"
 #include "matrix_maths.hpp"
 #include "types.hpp"
+#include "main.h"
 #include <string.h>
 
 using namespace EKF;
@@ -17,6 +18,7 @@ IMU::IMU_calibs_t IMU::create_calib_params(const float* correction_mat3x3, const
 	memcpy(&params.accel_correction_matrix.data, correction_mat3x3, sizeof(float) * 9U);
 	memcpy(&params.accel_biases.data, accel_biases, sizeof(float) * 3U);
 	memcpy(&params.gyro_biases.data, gyro_biases, sizeof(float) * 3U);
+	params.gyro_correction_matrix = Identity<3>();
 	return params;
 }
 
@@ -32,6 +34,61 @@ int32_t IMU::correct_gyro(float* data, const IMU_calibs_t* params) {
 	memcpy(&data_vec.data, data, sizeof(float) * 3U);
 	data_vec = mat_sub(data_vec, params->gyro_biases);
 	memcpy(data, &data_vec.data, sizeof(float) * 3U);
+	return EKF_SUCCESS;
+}
+
+int32_t IMU::calibrate(float* (*getIMUdat)(), IMU_calibs_t* params, uint32_t sample_time_ms) {
+	float ax_sum = 0.0f;
+	float ay_sum = 0.0f;
+	float az_sum = 0.0f;
+	float gx_sum = 0.0f;
+	float gy_sum = 0.0f;
+	float gz_sum = 0.0f;
+	uint32_t samples = 0;
+	uint32_t start_time = HAL_GetTick();
+
+	while ((HAL_GetTick() - start_time) < sample_time_ms) {
+		float* raw_data = getIMUdat();
+		ax_sum += raw_data[0];
+		ay_sum += raw_data[1];
+		az_sum += raw_data[2];
+		gx_sum += raw_data[3];
+		gy_sum += raw_data[4];
+		gz_sum += raw_data[5];
+		samples++;
+
+		HAL_Delay(10U);
+	}
+	if (samples == 0) return EKF_ERR;
+
+	float ax_avg = ax_sum / (float)samples;
+	float ay_avg = ay_sum / (float)samples;
+	float az_avg = az_sum / (float)samples;
+	float gx_avg = gx_sum / (float)samples;
+	float gy_avg = gy_sum / (float)samples;
+	float gz_avg = gz_sum / (float)samples;
+
+	params->gyro_biases(0,0) = gx_avg;
+	params->gyro_biases(1,0) = gy_avg;
+	params->gyro_biases(2,0) = gx_avg;
+
+	float roll  = atan2f(ay_avg, sqrtf(ax_avg * ax_avg + az_avg * az_avg));
+    float pitch = atan2f(-ax_avg, az_avg);
+
+    float cr = cosf(roll);
+	float sr = sinf(roll);
+	float cp = cosf(pitch);
+	float sp = sinf(pitch);
+
+	float level_mat[9U] = {
+			cp, sp*sr, sp*cr,
+			0.0f, cr, -sr,
+			-sp, cp*sr, cp*cr
+	};
+	SquareMatrix<3> levelling;
+	memcpy(levelling.data, level_mat, sizeof(float) * 9U);
+	params->accel_correction_matrix = mat_mult(levelling, params->accel_correction_matrix);
+	memcpy(params->gyro_correction_matrix.data, level_mat, sizeof(float)*9U);
 	return EKF_SUCCESS;
 }
 

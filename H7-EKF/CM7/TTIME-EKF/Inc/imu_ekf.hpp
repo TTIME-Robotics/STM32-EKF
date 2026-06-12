@@ -21,6 +21,7 @@ namespace EKF::IMU {
 
 	typedef struct {
 		SquareMatrix<3> accel_correction_matrix;
+		SquareMatrix<3> gyro_correction_matrix;
 		Vector<3> accel_biases;
 		Vector<3> gyro_biases;
 	} IMU_calibs_t;
@@ -48,6 +49,8 @@ namespace EKF::IMU {
 	 * @return EKF_SUCCESS if successful, EKF_ERROR if not
 	 */
 	int32_t correct_gyro(float* data, const IMU_calibs_t* params);
+
+	int32_t calibrate(float* (*getIMUdat)(), IMU_calibs_t* params, uint32_t sample_time_ms=2000U);
 
 	/**
 	 * @brief Predict using acceleration and angular rate
