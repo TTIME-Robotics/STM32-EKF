@@ -617,6 +617,20 @@ void low_pass_setAlpha(low_pass_filt_t* filt, float alpha) {
 void low_pass(low_pass_filt_t* filt, float inp) {
 	filt->out = filt->alpha*inp + (1-filt->alpha)*filt->out;
 }
+float arr[6];
+float* getIMURaw() {
+	Vector<3> accel_vec; Vector<3> gyro_vec;
+	struct bmi08_sensor_data accel_dat, gyro_dat;
+
+	bmi08a_get_data(&accel_dat, &rdev);
+	bmi08g_get_data(&gyro_dat, &rdev);
+
+	process_accel_measurements(&accel_dat, accel_vec);
+	process_gryo_measurements(&gyro_dat, gyro_vec);
+
+	float tmp[6] = {accel_vec(0,0),accel_vec(1,0),accel_vec(2,0),gyro_vec(0,0),gyro_vec(1,0),gyro_vec(2,0)}; memcpy(arr, tmp, 6*sizeof(float));
+	return arr;
+}
 
 /* USER CODE END 4 */
 
@@ -683,6 +697,8 @@ void StartImuTask(void *argument)
 	float accel_biases[3U] = { 0.10940603f,  0.10872448f, -0.08515973f };
 	float gyro_biases[3U] = { 0.0008648f,  -0.00058626f, -0.0014762f };
 	calib_params = EKF::IMU::create_calib_params(correction_mat, accel_biases, gyro_biases);
+
+	EKF::IMU::calibrate(getIMURaw, &calib_params, 2000U);
 
 	low_pass_filt_t ax_filt, ay_filt, az_filt;
 	low_pass_filt_t gx_filt, gy_filt, gz_filt;
