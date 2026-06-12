@@ -585,18 +585,20 @@ void imu_init(struct bmi08_dev* rdev, bool useSPI) {
 	bmi08g_set_meas_conf(rdev);
 	HAL_Delay(50);
 }
-
+EKF::IMU::IMU_calibs_t calib_params;
 void process_accel_measurements(const bmi08_sensor_data* dat_in, Vector<3>& dat_out) {
 	float ax = (float)dat_in->x / 32768.0f * 6.0f * 9.81f;
 	float az = (float)dat_in->z / 32768.0f * 6.0f * 9.81f;
 	float ay = (float)dat_in->y / 32768.0f * 6.0f * 9.81f;
 	dat_out.data[0]=ax; dat_out.data[1]=ay; dat_out.data[2]=az;
+	EKF::IMU::correct_accel(dat_out.data, &calib_params);
 }
 void process_gryo_measurements(const bmi08_sensor_data* dat_in, Vector<3>& dat_out){
 	float gx = (float)dat_in->x / 32768.0f * 500.0f / (180.0f / PI);
 	float gy = (float)dat_in->y / 32768.0f * 500.0f / (180.0f / PI);
 	float gz = (float)dat_in->z / 32768.0f * 500.0f / (180.0f / PI);
 	dat_out.data[0]=gx; dat_out.data[1]=gy; dat_out.data[2]=gz;
+	EKF::IMU::correct_gyro(dat_out.data, &calib_params);
 }
 
 
@@ -673,6 +675,15 @@ void StartImuTask(void *argument)
   /* USER CODE BEGIN StartImuTask */
 	imu_init(&rdev, false);
 
+	float correction_mat[9U] = {
+		1.00473113f, -0.00660536f, -0.01280495f,
+		-0.00660536f,  1.00394358f,  0.00342996f,
+		-0.01280495f,  0.00342996f,  1.0051751f
+	};
+	float accel_biases[3U] = { 0.10940603f,  0.10872448f, -0.08515973f };
+	float gyro_biases[3U] = { 0.0008648f,  -0.00058626f, -0.0014762f };
+	calib_params = EKF::IMU::create_calib_params(correction_mat, accel_biases, gyro_biases);
+
 	low_pass_filt_t ax_filt, ay_filt, az_filt;
 	low_pass_filt_t gx_filt, gy_filt, gz_filt;
 	low_pass_init(&ax_filt, 0.5);
@@ -693,14 +704,13 @@ void StartImuTask(void *argument)
 
 	  process_accel_measurements(&accel_dat, accel_vec);
 	  process_gryo_measurements(&gyro_dat, gyro_vec);
-	  /*
+
 	  low_pass(&ax_filt, accel_vec(0,0)); accel_vec(0,0)=ax_filt.out;
 	  low_pass(&ay_filt, accel_vec(1,0)); accel_vec(1,0)=ay_filt.out;
 	  low_pass(&az_filt, accel_vec(2,0)); accel_vec(2,0)=az_filt.out;
 	  low_pass(&gx_filt, gyro_vec(0,0)); gyro_vec(0,0)=gx_filt.out;
 	  low_pass(&gy_filt, gyro_vec(1,0)); gyro_vec(1,0)=gy_filt.out;
-	  low_pass(&gz_filt, gyro_vec(2,0)); gyro_vec(2,0)=gz_filt.out; */
-	  // ! Skip low pass filtering for calibrations
+	  low_pass(&gz_filt, gyro_vec(2,0)); gyro_vec(2,0)=gz_filt.out;
 
 	  Vector<3> useable_data = {
 			  .data = {
@@ -710,11 +720,12 @@ void StartImuTask(void *argument)
 			  }
 	  };
 
-	  //osMessageQueuePut(imuDataQueueHandle, &useable_data, 0U, osWaitForever);
+	  osMessageQueuePut(imuDataQueueHandle, &useable_data, 0U, osWaitForever);
 
+	  /*
 	  char msg[256U];
-	  sprintf(msg, "%f,%f,%f,%f,%f,%f\r\n", accel_vec(0,0),accel_vec(1,0),accel_vec(2,0),gyro_vec(0,0),gyro_vec(1,0),gyro_vec(2,0));
-	  HAL_UART_Transmit(&huart3, (uint8_t*)msg, strlen(msg), osWaitForever);
+	  sprintf(msg, "%f,%f,%f,%f,%f,%f,%i\r\n", accel_vec(0,0),accel_vec(1,0),accel_vec(2,0),gyro_vec(0,0),gyro_vec(1,0),gyro_vec(2,0),osKernelGetTickCount());
+	  HAL_UART_Transmit(&huart3, (uint8_t*)msg, strlen(msg), osWaitForever);*/
 
     osDelay(50U);
   }
