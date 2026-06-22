@@ -24,6 +24,9 @@ namespace EKF::IMU {
 		SquareMatrix<3> gyro_correction_matrix;
 		Vector<3> accel_biases;
 		Vector<3> gyro_biases;
+		float tilt_roll;
+		float tilt_pitch;
+		float G_CONST;
 	} IMU_calibs_t;
 
 	/**

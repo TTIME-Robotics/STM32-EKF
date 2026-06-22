@@ -27,6 +27,10 @@ int32_t IMU::correct_accel(float* data, const IMU_calibs_t* params) {
 	memcpy(&data_vec.data, data, sizeof(float) * 3U);
 	data_vec = mat_mult(params->accel_correction_matrix, mat_sub(data_vec, params->accel_biases));
 	memcpy(data, &data_vec.data, sizeof(float) * 3U);
+
+	data_vec(0,0) -= params->G_CONST * sinf(params->tilt_pitch);
+	data_vec(1,0) -= params->G_CONST * sinf(params->tilt_roll);
+
 	return EKF_SUCCESS;
 }
 int32_t IMU::correct_gyro(float* data, const IMU_calibs_t* params) {
@@ -74,6 +78,10 @@ int32_t IMU::calibrate(float* (*getIMUdat)(), IMU_calibs_t* params, uint32_t sam
 
 	float roll  = atan2f(ay_avg, az_avg);
 	float pitch = atan2f(-ax_avg, sqrtf(ay_avg * ay_avg + az_avg * az_avg));
+
+	params->tilt_pitch = pitch;
+	params ->tilt_roll = roll;
+	params->G_CONST = az_avg;
 
     float cr = cosf(roll);
 	float sr = sinf(roll);
