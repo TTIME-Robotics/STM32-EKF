@@ -70,10 +70,10 @@ int32_t IMU::calibrate(float* (*getIMUdat)(), IMU_calibs_t* params, uint32_t sam
 
 	params->gyro_biases(0,0) = gx_avg;
 	params->gyro_biases(1,0) = gy_avg;
-	params->gyro_biases(2,0) = gx_avg;
+	params->gyro_biases(2,0) = gz_avg;
 
-	float roll  = atan2f(ay_avg, sqrtf(ax_avg * ax_avg + az_avg * az_avg));
-    float pitch = atan2f(-ax_avg, az_avg);
+	float roll  = atan2f(ay_avg, az_avg);
+	float pitch = atan2f(-ax_avg, sqrtf(ay_avg * ay_avg + az_avg * az_avg));
 
     float cr = cosf(roll);
 	float sr = sinf(roll);
@@ -127,14 +127,23 @@ int32_t IMU::predict(EK_filter* filter, float ax, float ay, float angular_rate, 
     jac_F(0, 2) = cam * dt;   // d_posx / d_velu
     jac_F(0, 3) = -sim * dt;  // d_posx / d_velv
     jac_F(0, 4) = d_posx_d_angle;
-    jac_F(0, 5) = 0.5f * d_posx_d_angle * dt; // d_posx / d_omega
+    // d_posx / d_omega_old = 0 — Px' depends on the angular_rate INPUT (already
+    // captured in jac_G(0,2)), not on the previous omega state. Leave unset;
+    // Identity<STATE_N>() default for an off-diagonal entry is already 0.
 
     jac_F(1, 2) = sim * dt;   // d_posy / d_velu
     jac_F(1, 3) = cam * dt;   // d_posy / d_velv
     jac_F(1, 4) = d_posy_d_angle;
-    jac_F(1, 5) = 0.5f * d_posy_d_angle * dt; // d_posy / d_omega
+    // d_posy / d_omega_old = 0, same reasoning. Leave unset.
 
-    jac_F(4, 5) = dt;         // d_angle / d_omega
+    // d_angle / d_omega_old = 0 — theta' depends on the angular_rate INPUT
+    // (captured in jac_G(4,2)), not on the previous omega state. Leave unset.
+
+    jac_F(5, 5) = 0.0f; // new_omega is fully overwritten by the angular_rate
+                        // input each step (see jac_G(5,2)), so it has zero
+                        // dependence on its own previous value — this one DOES
+                        // need an explicit override, since (5,5) is a diagonal
+                        // entry and Identity<STATE_N>() defaults it to 1.
 
 
     // 3. Input Noise Transformation Jacobian (jac_G)

@@ -176,6 +176,7 @@ int main(void)
   /* MCU Configuration--------------------------------------------------------*/
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
+
   HAL_Init();
 
   /* USER CODE BEGIN Init */
@@ -736,12 +737,12 @@ void StartImuTask(void *argument)
 			  }
 	  };
 
-	  osMessageQueuePut(imuDataQueueHandle, &useable_data, 0U, osWaitForever);
+	  //osMessageQueuePut(imuDataQueueHandle, &useable_data, 0U, osWaitForever);
 
-	  /*
+
 	  char msg[256U];
 	  sprintf(msg, "%f,%f,%f,%f,%f,%f,%i\r\n", accel_vec(0,0),accel_vec(1,0),accel_vec(2,0),gyro_vec(0,0),gyro_vec(1,0),gyro_vec(2,0),osKernelGetTickCount());
-	  HAL_UART_Transmit(&huart3, (uint8_t*)msg, strlen(msg), osWaitForever);*/
+	  HAL_UART_Transmit(&huart3, (uint8_t*)msg, strlen(msg), osWaitForever);
 
     osDelay(50U);
   }
