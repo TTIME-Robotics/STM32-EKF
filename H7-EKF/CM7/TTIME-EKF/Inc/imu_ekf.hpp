@@ -24,10 +24,22 @@ namespace EKF::IMU {
 		SquareMatrix<3> gyro_correction_matrix;
 		Vector<3> accel_biases;
 		Vector<3> gyro_biases;
-		float tilt_roll;
-		float tilt_pitch;
-		float G_CONST;
 	} IMU_calibs_t;
+
+	typedef struct {
+		float pitch;
+		float roll;
+		float G_CONST;
+	} Gravity_correction_estimate_t;
+
+	int32_t update_g_correction(
+			Gravity_correction_estimate_t& estimate,
+			float ax, float ay, float az,
+			float gx, float gy, float gz,
+			float dt, float alpha=0.98f
+	);
+
+	void compensate_gravity(float& ax, float& ay, float& az, const Gravity_correction_estimate_t& correction);
 
 	/**
 	 * @brief Create a calibration params struct
@@ -53,7 +65,7 @@ namespace EKF::IMU {
 	 */
 	int32_t correct_gyro(float* data, const IMU_calibs_t* params);
 
-	int32_t calibrate(float* (*getIMUdat)(), IMU_calibs_t* params, uint32_t sample_time_ms=2000U);
+	int32_t calibrate(float* (*getIMUdat)(), IMU_calibs_t* params, Gravity_correction_estimate_t& g_correction, uint32_t sample_time_ms=2000U);
 
 	/**
 	 * @brief Predict using acceleration and angular rate
@@ -63,7 +75,7 @@ namespace EKF::IMU {
 	 * @param timestamp The current tick
 	 * @return EKF_SUCCESS if successful, EKF_ERROR if not
 	 */
-	int32_t predict(EK_filter* filter, const Vector<3>& imu_dat, const IMU_variances_t& variances, uint32_t timestamp);
+	int32_t predict(EK_filter* filter, const Vector<3>& imu_dat, const IMU_variances_t& variances, const Gravity_correction_estimate_t& g_correction, uint32_t timestamp);
 	/**
 	 * @brief Predict using acceleration and angular rate
 	 * @param filter reference to the generic EK filter
@@ -73,7 +85,7 @@ namespace EKF::IMU {
 	 * @param timestamp The current tick
 	 * @return EKF_SUCCESS if successful, EKF_ERROR if not
 	 */
-	int32_t predict(EK_filter* filter, float ax, float ay, float angular_rate, const IMU_variances_t& variances, uint32_t timestamp);
+	int32_t predict(EK_filter* filter, float ax, float ay, float angular_rate, const IMU_variances_t& variances, const Gravity_correction_estimate_t& g_correction, uint32_t timestamp);
 
 	/**
 	 * @brief Predict using acceleration only

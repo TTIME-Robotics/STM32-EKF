@@ -633,6 +633,8 @@ float* getIMURaw() {
 	return arr;
 }
 
+EKF::IMU::Gravity_correction_estimate_t g_correction;
+
 /* USER CODE END 4 */
 
 /* USER CODE BEGIN Header_StartTestsTask */
@@ -667,7 +669,7 @@ void StartTestsTask(void *argument)
 	  Vector<3> imu_dat;
 	  osMessageQueueGet(imuDataQueueHandle, &imu_dat, 0U, osWaitForever);
 	  timestamp = osKernelGetTickCount();
-	  EKF::IMU::predict(&filter, imu_dat(0,0), imu_dat(1,0), imu_dat(2,0), variances_inp, timestamp);
+	  EKF::IMU::predict(&filter, imu_dat(0,0), imu_dat(1,0), imu_dat(2,0), variances_inp, g_correction, timestamp);
 	  EKF::Pose_t pose = filter.get_pose();
 
 	  char msg[64U];
@@ -699,7 +701,7 @@ void StartImuTask(void *argument)
 	float gyro_biases[3U] = { 0.0008648f,  -0.00058626f, -0.0014762f };
 	calib_params = EKF::IMU::create_calib_params(correction_mat, accel_biases, gyro_biases);
 
-	EKF::IMU::calibrate(getIMURaw, &calib_params, 2000U);
+	EKF::IMU::calibrate(getIMURaw, &calib_params, g_correction, 2000U);
 
 	low_pass_filt_t ax_filt, ay_filt, az_filt;
 	low_pass_filt_t gx_filt, gy_filt, gz_filt;
@@ -711,6 +713,8 @@ void StartImuTask(void *argument)
 	low_pass_init(&gz_filt, 0.5);
 
 	Vector<3> accel_vec, gyro_vec;
+
+	uint32_t time_prev = osKernelGetTickCount();
   /* Infinite loop */
   for(;;)
   {
@@ -721,6 +725,13 @@ void StartImuTask(void *argument)
 
 	  process_accel_measurements(&accel_dat, accel_vec);
 	  process_gryo_measurements(&gyro_dat, gyro_vec);
+
+	  uint32_t time_now = osKernelGetTickCount();
+	  float dt = (time_now - time_prev) / 1000.0f;
+	  time_prev = time_now;
+
+
+	  EKF::IMU::update_g_correction(g_correction, accel_vec(0,0), accel_vec(1,0), accel_vec(2,0), gyro_vec(0,0), gyro_vec(1,0), gyro_vec(2,0), dt);
 
 	  low_pass(&ax_filt, accel_vec(0,0)); accel_vec(0,0)=ax_filt.out;
 	  low_pass(&ay_filt, accel_vec(1,0)); accel_vec(1,0)=ay_filt.out;
@@ -736,13 +747,12 @@ void StartImuTask(void *argument)
 				gyro_vec(2,0)
 			  }
 	  };
+	  osMessageQueuePut(imuDataQueueHandle, &useable_data, 0U, osWaitForever);
 
-	  //osMessageQueuePut(imuDataQueueHandle, &useable_data, 0U, osWaitForever);
-
-
+	  /*
 	  char msg[256U];
 	  sprintf(msg, "%f,%f,%f,%f,%f,%f,%i\r\n", accel_vec(0,0),accel_vec(1,0),accel_vec(2,0),gyro_vec(0,0),gyro_vec(1,0),gyro_vec(2,0),osKernelGetTickCount());
-	  HAL_UART_Transmit(&huart3, (uint8_t*)msg, strlen(msg), osWaitForever);
+	  HAL_UART_Transmit(&huart3, (uint8_t*)msg, strlen(msg), osWaitForever);*/
 
     osDelay(50U);
   }

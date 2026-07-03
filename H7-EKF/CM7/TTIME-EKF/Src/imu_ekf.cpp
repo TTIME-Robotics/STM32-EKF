@@ -13,6 +13,33 @@
 
 using namespace EKF;
 
+int32_t IMU::update_g_correction(
+		Gravity_correction_estimate_t& estimate,
+		float ax, float ay, float az,
+		float gx, float gy, float gz,
+		float dt, float alpha
+) {
+	// Gyro integration
+	float roll_gyro  = estimate.roll  + gx * dt;
+	float pitch_gyro = estimate.pitch + gy * dt;
+
+	// Accelerometer tilt estimate (only valid when near-stationary)
+	float roll_accel  = atan2f(ay, az);
+	float pitch_accel = atan2f(-ax, sqrtf(ay*ay + az*az));
+
+	// Complementary filter: trust gyro short-term, accel long-term
+	estimate.roll  = alpha * roll_gyro  + (1.0f - alpha) * roll_accel;
+	estimate.pitch = alpha * pitch_gyro + (1.0f - alpha) * pitch_accel;
+
+	return EKF_SUCCESS;
+}
+
+void IMU::compensate_gravity(float& ax, float& ay, float& az, const Gravity_correction_estimate_t& correction) {
+	ax -= correction.G_CONST * sinf(correction.pitch);
+	ay -= correction.G_CONST * sinf(correction.roll) * cosf(correction.pitch);
+	az -= correction.G_CONST * cosf(correction.roll) * cosf(correction.pitch);
+}
+
 IMU::IMU_calibs_t IMU::create_calib_params(const float* correction_mat3x3, const float* accel_biases, const float* gyro_biases) {
 	IMU_calibs_t params;
 	memcpy(&params.accel_correction_matrix.data, correction_mat3x3, sizeof(float) * 9U);
@@ -28,9 +55,6 @@ int32_t IMU::correct_accel(float* data, const IMU_calibs_t* params) {
 	data_vec = mat_mult(params->accel_correction_matrix, mat_sub(data_vec, params->accel_biases));
 	memcpy(data, &data_vec.data, sizeof(float) * 3U);
 
-	data_vec(0,0) -= params->G_CONST * sinf(params->tilt_pitch);
-	data_vec(1,0) -= params->G_CONST * sinf(params->tilt_roll);
-
 	return EKF_SUCCESS;
 }
 int32_t IMU::correct_gyro(float* data, const IMU_calibs_t* params) {
@@ -41,7 +65,7 @@ int32_t IMU::correct_gyro(float* data, const IMU_calibs_t* params) {
 	return EKF_SUCCESS;
 }
 
-int32_t IMU::calibrate(float* (*getIMUdat)(), IMU_calibs_t* params, uint32_t sample_time_ms) {
+int32_t IMU::calibrate(float* (*getIMUdat)(), IMU_calibs_t* params, Gravity_correction_estimate_t& g_correction, uint32_t sample_time_ms) {
 	float ax_sum = 0.0f;
 	float ay_sum = 0.0f;
 	float az_sum = 0.0f;
@@ -79,9 +103,9 @@ int32_t IMU::calibrate(float* (*getIMUdat)(), IMU_calibs_t* params, uint32_t sam
 	float roll  = atan2f(ay_avg, az_avg);
 	float pitch = atan2f(-ax_avg, sqrtf(ay_avg * ay_avg + az_avg * az_avg));
 
-	params->tilt_pitch = pitch;
-	params ->tilt_roll = roll;
-	params->G_CONST = az_avg;
+	g_correction.G_CONST = az_avg;
+	g_correction.roll = roll;
+	g_correction.pitch = pitch;
 
     float cr = cosf(roll);
 	float sr = sinf(roll);
@@ -100,11 +124,14 @@ int32_t IMU::calibrate(float* (*getIMUdat)(), IMU_calibs_t* params, uint32_t sam
 	return EKF_SUCCESS;
 }
 
-int32_t IMU::predict(EK_filter* filter, const Vector<3>& imu_dat, const IMU_variances_t& variances, uint32_t timestamp) {
-	return IMU::predict(filter, imu_dat(0,0), imu_dat(1,0), imu_dat(2,0), variances, timestamp);
+int32_t IMU::predict(EK_filter* filter, const Vector<3>& imu_dat, const IMU_variances_t& variances, const Gravity_correction_estimate_t& g_correction, uint32_t timestamp) {
+	return IMU::predict(filter, imu_dat(0,0), imu_dat(1,0), imu_dat(2,0), variances, g_correction, timestamp);
 }
 
-int32_t IMU::predict(EK_filter* filter, float ax, float ay, float angular_rate, const IMU_variances_t& variances, uint32_t timestamp) {
+int32_t IMU::predict(EK_filter* filter, float ax, float ay, float angular_rate, const IMU_variances_t& variances, const Gravity_correction_estimate_t& g_correction, uint32_t timestamp) {
+
+	float az = 0.0f;
+	compensate_gravity(ax, ay, az, g_correction);
 
     State_t new_state;
     State_t current_state = filter->get_state();
