@@ -22,7 +22,7 @@ public:
  	 * @param init_state The initial estimate
 	 * @param init_cov The initial covariance (uncertainty in initial state)
 	 */
-	EK_filter(State_t init_state, const SquareMatrix<STATE_N>& init_cov);
+	EK_filter(State_t init_state, const SquareMatrix<STATE_N>& init_cov, uint32_t time);
 	/**
 	 * @brief Trivial destructor
 	 */
