@@ -21,6 +21,7 @@ public:
 	 * @brief Constructs the filter with initial values
  	 * @param init_state The initial estimate
 	 * @param init_cov The initial covariance (uncertainty in initial state)
+	 * @param time The current tick
 	 */
 	EK_filter(State_t init_state, const SquareMatrix<STATE_N>& init_cov, uint32_t time);
 	/**
@@ -107,5 +108,7 @@ private:
 };
 
 }
+
+#include "ekf.tpp"
 
 #endif // EKF_EKF_HPP

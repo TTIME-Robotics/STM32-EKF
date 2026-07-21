@@ -8,7 +8,11 @@
 #ifndef EKF_API_HPP
 #define EKF_API_HPP
 
+#include "ekf.hpp"
+#include "imu_ekf.hpp"
+
 #include "types.hpp"
+#include "matrix_maths.hpp"
 #include "error.h"
 
-#endif EKF_API_HPP
+#endif //EKF_API_HPP

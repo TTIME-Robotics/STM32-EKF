@@ -23,6 +23,9 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "api.hpp"
+#include "bmi08x.h"
+#include <stdio.h>
+#include <cstring>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -57,6 +60,8 @@
 
 I2C_HandleTypeDef hi2c1;
 
+UART_HandleTypeDef huart3;
+
 /* Definitions for testsTask */
 osThreadId_t testsTaskHandle;
 const osThreadAttr_t testsTask_attributes = {
@@ -68,7 +73,7 @@ const osThreadAttr_t testsTask_attributes = {
 osThreadId_t imuDataTaskHandle;
 const osThreadAttr_t imuDataTask_attributes = {
   .name = "imuDataTask",
-  .stack_size = 128 * 4,
+  .stack_size = 512 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
 /* Definitions for stackMonitor */
@@ -98,6 +103,7 @@ const osMessageQueueAttr_t imuDataQueue_attributes = {
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_I2C1_Init(void);
+static void MX_USART3_UART_Init(void);
 void StartTestsTask(void *argument);
 void StartImuTask(void *argument);
 void StartStackMonitor(void *argument);
@@ -109,7 +115,35 @@ void StartUartPrintTask(void *argument);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+typedef struct {
+	GPIO_TypeDef* port;
+	uint16_t pin;
+} cs_pin_t;
 
+typedef struct {
+	float out;
+	float alpha;
+} low_pass_filt_t;
+void CS_low(cs_pin_t* intf_ptr);
+void CS_high(cs_pin_t* intf_ptr);
+
+int8_t spi_read(uint8_t reg_addr, uint8_t *reg_data, uint32_t len, void *intf_ptr);
+int8_t spi_write(uint8_t reg_addr, const uint8_t *reg_data, uint32_t len, void *intf_ptr);
+int8_t i2c_read(uint8_t reg_addr, uint8_t *reg_data, uint32_t len, void *intf_ptr);
+int8_t i2c_write(uint8_t reg_addr, const uint8_t *reg_data, uint32_t len, void *intf_ptr);
+void delay_us(uint32_t us, void *intf_ptr);
+void DWT_Init();
+
+void imu_init(struct bmi08_dev* rdev, bool useSPI);
+
+void process_accel_measurements(const bmi08_sensor_data* dat_in, Vector<3>& dat_out);
+void process_gryo_measurements(const bmi08_sensor_data* dat_in, Vector<3>& dat_out);
+
+void low_pass_init(low_pass_filt_t* filt, float alpha);
+void low_pass_setAlpha(low_pass_filt_t* filt, float alpha);
+void low_pass(low_pass_filt_t* filt, float inp);
+
+struct bmi08_dev rdev;
 /* USER CODE END 0 */
 
 /**
@@ -142,6 +176,7 @@ int main(void)
   /* MCU Configuration--------------------------------------------------------*/
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
+
   HAL_Init();
 
   /* USER CODE BEGIN Init */
@@ -171,12 +206,13 @@ Error_Handler();
 /* USER CODE END Boot_Mode_Sequence_2 */
 
   /* USER CODE BEGIN SysInit */
-
+	DWT_Init();
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_I2C1_Init();
+  MX_USART3_UART_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
@@ -198,7 +234,7 @@ Error_Handler();
 
   /* Create the queue(s) */
   /* creation of imuDataQueue */
-  imuDataQueueHandle = osMessageQueueNew (8, sizeof(uint16_t), &imuDataQueue_attributes);
+  imuDataQueueHandle = osMessageQueueNew (8, sizeof(Vector<3>), &imuDataQueue_attributes);
 
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
@@ -232,7 +268,7 @@ Error_Handler();
 
   /* Initialize USER push-button, will be used to trigger an interrupt each time it's pressed.*/
   BSP_PB_Init(BUTTON_USER, BUTTON_MODE_EXTI);
-  BSP_LED_On(LED_GREEN);
+
   /* Start scheduler */
   osKernelStart();
 
@@ -358,6 +394,54 @@ static void MX_I2C1_Init(void)
 }
 
 /**
+  * @brief USART3 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART3_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART3_Init 0 */
+
+  /* USER CODE END USART3_Init 0 */
+
+  /* USER CODE BEGIN USART3_Init 1 */
+
+  /* USER CODE END USART3_Init 1 */
+  huart3.Instance = USART3;
+  huart3.Init.BaudRate = 115200;
+  huart3.Init.WordLength = UART_WORDLENGTH_8B;
+  huart3.Init.StopBits = UART_STOPBITS_1;
+  huart3.Init.Parity = UART_PARITY_NONE;
+  huart3.Init.Mode = UART_MODE_TX_RX;
+  huart3.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart3.Init.OverSampling = UART_OVERSAMPLING_16;
+  huart3.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
+  huart3.Init.ClockPrescaler = UART_PRESCALER_DIV1;
+  huart3.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
+  if (HAL_UART_Init(&huart3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_UARTEx_SetTxFifoThreshold(&huart3, UART_TXFIFO_THRESHOLD_1_8) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_UARTEx_SetRxFifoThreshold(&huart3, UART_RXFIFO_THRESHOLD_1_8) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_UARTEx_DisableFifoMode(&huart3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART3_Init 2 */
+
+  /* USER CODE END USART3_Init 2 */
+
+}
+
+/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -403,14 +487,6 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Alternate = GPIO_AF11_ETH;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PD8 PD9 */
-  GPIO_InitStruct.Pin = GPIO_PIN_8|GPIO_PIN_9;
-  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  GPIO_InitStruct.Alternate = GPIO_AF7_USART3;
-  HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
-
   /*Configure GPIO pin : USB_OTG_FS_PWR_EN_Pin */
   GPIO_InitStruct.Pin = USB_OTG_FS_PWR_EN_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
@@ -446,14 +522,157 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-void recurseStackGobbler(void *arg) {
-    volatile uint8_t buf[32]; // force real stack allocation
-    buf[0] = 0xAB;            // actually touch it so compiler can't optimize out
-
-    osDelay(10);              // context switch here — gives scheduler chance to check watermark
-
-    recurseStackGobbler(arg);         // tail recurse, grows stack by ~32 + frame overhead each time
+void CS_low(cs_pin_t* intf_ptr) {
+	HAL_GPIO_WritePin(intf_ptr->port, intf_ptr->pin, GPIO_PIN_RESET);
 }
+void CS_high(cs_pin_t* intf_ptr) {
+	HAL_GPIO_WritePin(intf_ptr->port, intf_ptr->pin, GPIO_PIN_SET);
+}
+int8_t i2c_read(uint8_t reg_addr, uint8_t *reg_data, uint32_t len, void *intf_ptr) {
+    uint8_t dev_addr = *(uint8_t*) intf_ptr;
+    HAL_I2C_Mem_Read(&hi2c1, dev_addr << 1, reg_addr, I2C_MEMADD_SIZE_8BIT, reg_data, len, 50U);
+    return 0;
+}
+int8_t i2c_write(uint8_t reg_addr, const uint8_t *reg_data, uint32_t len, void *intf_ptr) {
+    uint8_t dev_addr = *(uint8_t*) intf_ptr;
+    HAL_I2C_Mem_Write(&hi2c1, dev_addr << 1, reg_addr, I2C_MEMADD_SIZE_8BIT, (uint8_t*) reg_data, len, 50U);
+    return 0;
+}
+void delay_us(uint32_t us, void *intf_ptr) {
+    uint32_t start = DWT->CYCCNT;
+    uint32_t ticks = us * (HAL_RCC_GetHCLKFreq() / 1000000U);
+    while ((DWT->CYCCNT - start) < ticks);
+}
+void DWT_Init() {
+	CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
+	DWT->CYCCNT = 0;
+	DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
+}
+// Device address for I2C
+uint8_t acc_dev_addr = BMI08_ACCEL_I2C_ADDR_SECONDARY;   // 0x19
+uint8_t gyro_dev_addr = BMI08_GYRO_I2C_ADDR_SECONDARY;   // 0x69
+void imu_init(struct bmi08_dev* rdev, bool useSPI) {
+	rdev->delay_us = delay_us;
+	rdev->variant = BMI088_VARIANT;
+	if (useSPI) {
+		// SPI dev setup
+	} else {
+		rdev->intf_ptr_accel = &acc_dev_addr;
+		rdev->intf_ptr_gyro = &gyro_dev_addr;
+		rdev->intf = BMI08_I2C_INTF;
+		rdev->read = i2c_read;
+		rdev->write = i2c_write;
+	}
+	bmi08a_init(rdev);
+	bmi08g_init(rdev);
+	HAL_Delay(50);
+
+	// Wake accelerometer from suspend
+	rdev->accel_cfg.power = BMI08_ACCEL_PM_ACTIVE;
+	bmi08a_set_power_mode(rdev);
+	HAL_Delay(50);
+
+	// Set gyro to normal mode
+	rdev->gyro_cfg.power = BMI08_GYRO_PM_NORMAL;
+	bmi08g_set_power_mode(rdev);
+	HAL_Delay(50);
+
+	rdev->accel_cfg.range = BMI088_ACCEL_RANGE_6G;
+	rdev->gyro_cfg.range = BMI08_GYRO_RANGE_500_DPS;
+	rdev->gyro_cfg.odr = BMI08_GYRO_BW_32_ODR_100_HZ;
+	rdev->accel_cfg.odr = BMI08_ACCEL_ODR_100_HZ;
+	rdev->accel_cfg.bw = BMI08_ACCEL_BW_NORMAL;
+	bmi08a_set_meas_conf(rdev);
+	bmi08g_set_meas_conf(rdev);
+	HAL_Delay(50);
+}
+EKF::IMU::IMU_calibs_t calib_params;
+void process_accel_measurements(const bmi08_sensor_data* dat_in, Vector<3>& dat_out) {
+	float ax = (float)dat_in->x / 32768.0f * 6.0f * 9.81f;
+	float az = (float)dat_in->z / 32768.0f * 6.0f * 9.81f;
+	float ay = (float)dat_in->y / 32768.0f * 6.0f * 9.81f;
+	dat_out.data[0]=ax; dat_out.data[1]=ay; dat_out.data[2]=az;
+	EKF::IMU::correct_accel(dat_out.data, &calib_params);
+}
+void process_gryo_measurements(const bmi08_sensor_data* dat_in, Vector<3>& dat_out){
+	float gx = (float)dat_in->x / 32768.0f * 500.0f / (180.0f / PI);
+	float gy = (float)dat_in->y / 32768.0f * 500.0f / (180.0f / PI);
+	float gz = (float)dat_in->z / 32768.0f * 500.0f / (180.0f / PI);
+	dat_out.data[0]=gx; dat_out.data[1]=gy; dat_out.data[2]=gz;
+	EKF::IMU::correct_gyro(dat_out.data, &calib_params);
+}
+
+
+void low_pass_init(low_pass_filt_t* filt, float alpha) {
+	low_pass_setAlpha(filt, alpha);
+	filt->out = 0.0f;
+}
+void low_pass_setAlpha(low_pass_filt_t* filt, float alpha) {
+	if (alpha > 1.0f) {
+		alpha = 1.0f;
+	} else if (alpha < 0.0f) {
+		alpha = 0.0f;
+	}
+	filt->alpha = alpha;
+}
+void low_pass(low_pass_filt_t* filt, float inp) {
+	filt->out = filt->alpha*inp + (1-filt->alpha)*filt->out;
+}
+float arr[6];
+float* getIMURaw() {
+	Vector<3> accel_vec; Vector<3> gyro_vec;
+	struct bmi08_sensor_data accel_dat, gyro_dat;
+
+	bmi08a_get_data(&accel_dat, &rdev);
+	bmi08g_get_data(&gyro_dat, &rdev);
+
+	process_accel_measurements(&accel_dat, accel_vec);
+	process_gryo_measurements(&gyro_dat, gyro_vec);
+
+	float tmp[6] = {accel_vec(0,0),accel_vec(1,0),accel_vec(2,0),gyro_vec(0,0),gyro_vec(1,0),gyro_vec(2,0)}; memcpy(arr, tmp, 6*sizeof(float));
+	return arr;
+}
+
+static float calib_raw_buffer[6];
+float* getIMUPureRaw() {
+	struct bmi08_sensor_data accel_dat, gyro_dat;
+
+	bmi08a_get_data(&accel_dat, &rdev);
+	bmi08g_get_data(&gyro_dat, &rdev);
+
+	Vector<3> accel_raw = {
+		.data = {
+			static_cast<float>(accel_dat.x) / 32768.0f * 6.0f * 9.81f,
+			static_cast<float>(accel_dat.y) / 32768.0f * 6.0f * 9.81f,
+			static_cast<float>(accel_dat.z) / 32768.0f * 6.0f * 9.81f
+		}
+	};
+
+	Vector<3> gyro_raw = {
+		.data = {
+			static_cast<float>(gyro_dat.x) / 32768.0f * 500.0f / (180.0f / PI),
+			static_cast<float>(gyro_dat.y) / 32768.0f * 500.0f / (180.0f / PI),
+			static_cast<float>(gyro_dat.z) / 32768.0f * 500.0f / (180.0f / PI)
+		}
+	};
+
+	// Subtract initial biases
+	accel_raw = mat_sub(accel_raw, calib_params.accel_biases);
+	gyro_raw  = mat_sub(gyro_raw, calib_params.gyro_biases);
+
+	// Apply base correction matrix (without previously multiplied levelling transforms)
+	accel_raw = mat_mult(calib_params.accel_correction_matrix, accel_raw);
+
+	calib_raw_buffer[0] = accel_raw(0,0);
+	calib_raw_buffer[1] = accel_raw(1,0);
+	calib_raw_buffer[2] = accel_raw(2,0);
+	calib_raw_buffer[3] = gyro_raw(0,0);
+	calib_raw_buffer[4] = gyro_raw(1,0);
+	calib_raw_buffer[5] = gyro_raw(2,0);
+
+	return calib_raw_buffer;
+}
+
 /* USER CODE END 4 */
 
 /* USER CODE BEGIN Header_StartTestsTask */
@@ -466,12 +685,35 @@ void recurseStackGobbler(void *arg) {
 void StartTestsTask(void *argument)
 {
   /* USER CODE BEGIN 5 */
-	//! Intentionally create stack overflow
-	recurseStackGobbler(argument);
+	EKF::State_t state = {
+			.position_x = 0.0f,
+			.position_y = 0.0f,
+			.velocity_u = 0.0f,
+			.velocity_v = 0.0f,
+			.angle = 3.14159265359f/2.0f,
+			.angular_vel = 0
+	};
+	EKF::SquareMatrix<6> certainty = EKF::Zero<6,6>;
+	uint32_t timestamp = osKernelGetTickCount();
+	EKF::EK_filter filter(state, certainty, timestamp);
+	EKF::IMU::IMU_variances_t variances_inp = {
+			.variance_ax=2.5e-4,
+			.variance_ay=2.5e-4,
+			.variance_angular_rate=4e-4
+	};
   /* Infinite loop */
   for(;;)
   {
-    osDelay(1);
+	  Vector<3> imu_dat;
+	  osMessageQueueGet(imuDataQueueHandle, &imu_dat, 0U, osWaitForever);
+	  timestamp = osKernelGetTickCount();
+	  EKF::IMU::predict(&filter, imu_dat(0,0), imu_dat(1,0), imu_dat(2,0), variances_inp, timestamp);
+	  EKF::Pose_t pose = filter.get_pose();
+
+	  char msg[64U];
+	  sprintf(msg, "%02f,%02f,%02f,%i\r\n", pose.position_x, pose.position_y, pose.heading, timestamp);
+	  HAL_UART_Transmit(&huart3, (uint8_t*)msg, strlen(msg), 1000U);
+    osDelay(0U);
   }
   /* USER CODE END 5 */
 }
@@ -486,10 +728,63 @@ void StartTestsTask(void *argument)
 void StartImuTask(void *argument)
 {
   /* USER CODE BEGIN StartImuTask */
+	imu_init(&rdev, false);
+
+	float correction_mat[9U] = {
+		1.00473113f, -0.00660536f, -0.01280495f,
+		-0.00660536f,  1.00394358f,  0.00342996f,
+		-0.01280495f,  0.00342996f,  1.0051751f
+	};
+	float accel_biases[3U] = { 0.10940603f,  0.10872448f, -0.08515973f };
+	float gyro_biases[3U] = { 0.0008648f,  -0.00058626f, -0.0014762f };
+	calib_params = EKF::IMU::create_calib_params(correction_mat, accel_biases, gyro_biases);
+
+	if (EKF::IMU::calibrate(getIMUPureRaw, &calib_params, 2000U) != EKF_SUCCESS) {
+		Error_Handler();
+	}
+
+	low_pass_filt_t ax_filt, ay_filt, az_filt;
+	low_pass_filt_t gx_filt, gy_filt, gz_filt;
+	low_pass_init(&ax_filt, 0.5);
+	low_pass_init(&ay_filt, 0.5);
+	low_pass_init(&az_filt, 0.5);
+	low_pass_init(&gx_filt, 0.5);
+	low_pass_init(&gy_filt, 0.5);
+	low_pass_init(&gz_filt, 0.5);
+
+	Vector<3> accel_vec, gyro_vec;
   /* Infinite loop */
   for(;;)
   {
-    osDelay(1);
+	  struct bmi08_sensor_data accel_dat, gyro_dat;
+
+	  bmi08a_get_data(&accel_dat, &rdev);
+	  bmi08g_get_data(&gyro_dat, &rdev);
+
+	  process_accel_measurements(&accel_dat, accel_vec);
+	  process_gryo_measurements(&gyro_dat, gyro_vec);
+
+	  low_pass(&ax_filt, accel_vec(0,0)); accel_vec(0,0)=ax_filt.out;
+	  low_pass(&ay_filt, accel_vec(1,0)); accel_vec(1,0)=ay_filt.out;
+	  low_pass(&az_filt, accel_vec(2,0)); accel_vec(2,0)=az_filt.out;
+	  low_pass(&gx_filt, gyro_vec(0,0)); gyro_vec(0,0)=gx_filt.out;
+	  low_pass(&gy_filt, gyro_vec(1,0)); gyro_vec(1,0)=gy_filt.out;
+	  low_pass(&gz_filt, gyro_vec(2,0)); gyro_vec(2,0)=gz_filt.out;
+
+	  Vector<3> useable_data = {
+			  .data = {
+				accel_vec(0,0),
+				accel_vec(1,0),
+				gyro_vec(2,0)
+			  }
+	  };
+
+	  osMessageQueuePut(imuDataQueueHandle, &useable_data, 0U, osWaitForever);
+
+	  char msg[256U];
+	  sprintf(msg, "%f,%f,%f,%f,%f,%f,%i\r\n", accel_vec(0,0),accel_vec(1,0),accel_vec(2,0),gyro_vec(0,0),gyro_vec(1,0),gyro_vec(2,0),osKernelGetTickCount());
+
+    osDelay(50U);
   }
   /* USER CODE END StartImuTask */
 }
@@ -507,7 +802,20 @@ void StartStackMonitor(void *argument)
   /* Infinite loop */
   for(;;)
   {
-    osDelay(1);
+	  UBaseType_t tests_hwm = uxTaskGetStackHighWaterMark(
+	      (TaskHandle_t)testsTaskHandle);
+	  UBaseType_t imu_hwm = uxTaskGetStackHighWaterMark(
+	      (TaskHandle_t)imuDataTaskHandle);
+	  UBaseType_t monitor_hwm = uxTaskGetStackHighWaterMark(
+	      (TaskHandle_t)stackMonitorHandle);
+
+	  char msg[80];
+	  snprintf(msg, sizeof(msg), "STK tst:%lu imu:%lu mon:%lu\r\n",
+			   (unsigned long)tests_hwm,
+			   (unsigned long)imu_hwm,
+			   (unsigned long)monitor_hwm);
+
+	  osDelay(100U);
   }
   /* USER CODE END StartStackMonitor */
 }

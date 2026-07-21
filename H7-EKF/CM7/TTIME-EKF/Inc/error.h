@@ -10,6 +10,6 @@
 #include "limits.h"
 
 #define EKF_ERR (-INFINITY)
-#define EKF_SUCCESS (1);
+#define EKF_SUCCESS (1)
 
 #endif // EKF_ERROR_H
