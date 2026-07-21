@@ -708,7 +708,9 @@ void StartTestsTask(void *argument)
 	  osMessageQueueGet(imuDataQueueHandle, &imu_dat, 0U, osWaitForever);
 	  timestamp = osKernelGetTickCount();
 	  EKF::IMU::predict(&filter, imu_dat(0,0), imu_dat(1,0), imu_dat(2,0), variances_inp, timestamp);
-	  filter.ZUPT(timestamp);
+	  if (BSP_PB_GetState(BUTTON_USER)){
+		  filter.ZUPT(timestamp);
+	  }
 	  EKF::Pose_t pose = filter.get_pose();
 
 	  char msg[64U];
