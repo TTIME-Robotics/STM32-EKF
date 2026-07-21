@@ -697,9 +697,9 @@ void StartTestsTask(void *argument)
 	uint32_t timestamp = osKernelGetTickCount();
 	EKF::EK_filter filter(state, certainty, timestamp);
 	EKF::IMU::IMU_variances_t variances_inp = {
-			.variance_ax=2.5e-4,
-			.variance_ay=2.5e-4,
-			.variance_angular_rate=4e-4
+			.variance_ax=2.5e-2,
+			.variance_ay=2.5e-2,
+			.variance_angular_rate=4e-2
 	};
   /* Infinite loop */
   for(;;)
@@ -708,6 +708,7 @@ void StartTestsTask(void *argument)
 	  osMessageQueueGet(imuDataQueueHandle, &imu_dat, 0U, osWaitForever);
 	  timestamp = osKernelGetTickCount();
 	  EKF::IMU::predict(&filter, imu_dat(0,0), imu_dat(1,0), imu_dat(2,0), variances_inp, timestamp);
+	  filter.ZUPT(timestamp);
 	  EKF::Pose_t pose = filter.get_pose();
 
 	  char msg[64U];

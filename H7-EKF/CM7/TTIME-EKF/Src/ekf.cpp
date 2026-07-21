@@ -35,6 +35,25 @@ int32_t EK_filter::predict(
 
 // EK_filter::update in .tpp file
 
+int32_t EK_filter::ZUPT(uint32_t timestamp) {
+	Vector<2> innov;
+	innov(0,0) = -state_estimate.velocity_u;
+	innov(1,0) = -state_estimate.velocity_v;
+	Matrix<2,STATE_N> jac_H = {
+			.data {
+					0, 0, 1, 0, 0, 0,
+					0, 0, 0, 1, 0, 0
+			}
+	};
+	SquareMatrix<2> noise = {
+			.data {
+				1e-4, 0,
+				0, 1e-4
+			}
+	};
+	return update<2>(innov, jac_H, noise, timestamp);
+}
+
 void EK_filter::set_state(const State_t state, const SquareMatrix<STATE_N>& state_cov) {
 	state_estimate = state;
 	state_covariance = state_cov;
