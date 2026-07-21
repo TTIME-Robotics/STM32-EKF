@@ -633,6 +633,46 @@ float* getIMURaw() {
 	return arr;
 }
 
+static float calib_raw_buffer[6];
+float* getIMUPureRaw() {
+	struct bmi08_sensor_data accel_dat, gyro_dat;
+
+	bmi08a_get_data(&accel_dat, &rdev);
+	bmi08g_get_data(&gyro_dat, &rdev);
+
+	Vector<3> accel_raw = {
+		.data = {
+			static_cast<float>(accel_dat.x) / 32768.0f * 6.0f * 9.81f,
+			static_cast<float>(accel_dat.y) / 32768.0f * 6.0f * 9.81f,
+			static_cast<float>(accel_dat.z) / 32768.0f * 6.0f * 9.81f
+		}
+	};
+
+	Vector<3> gyro_raw = {
+		.data = {
+			static_cast<float>(gyro_dat.x) / 32768.0f * 500.0f / (180.0f / PI),
+			static_cast<float>(gyro_dat.y) / 32768.0f * 500.0f / (180.0f / PI),
+			static_cast<float>(gyro_dat.z) / 32768.0f * 500.0f / (180.0f / PI)
+		}
+	};
+
+	// Subtract initial biases
+	accel_raw = mat_sub(accel_raw, calib_params.accel_biases);
+	gyro_raw  = mat_sub(gyro_raw, calib_params.gyro_biases);
+
+	// Apply base correction matrix (without previously multiplied levelling transforms)
+	accel_raw = mat_mult(calib_params.accel_correction_matrix, accel_raw);
+
+	calib_raw_buffer[0] = accel_raw(0,0);
+	calib_raw_buffer[1] = accel_raw(1,0);
+	calib_raw_buffer[2] = accel_raw(2,0);
+	calib_raw_buffer[3] = gyro_raw(0,0);
+	calib_raw_buffer[4] = gyro_raw(1,0);
+	calib_raw_buffer[5] = gyro_raw(2,0);
+
+	return calib_raw_buffer;
+}
+
 /* USER CODE END 4 */
 
 /* USER CODE BEGIN Header_StartTestsTask */
@@ -699,7 +739,9 @@ void StartImuTask(void *argument)
 	float gyro_biases[3U] = { 0.0008648f,  -0.00058626f, -0.0014762f };
 	calib_params = EKF::IMU::create_calib_params(correction_mat, accel_biases, gyro_biases);
 
-	EKF::IMU::calibrate(getIMURaw, &calib_params, 2000U);
+	if (EKF::IMU::calibrate(getIMUPureRaw, &calib_params, 2000U) != EKF_SUCCESS) {
+		Error_Handler();
+	}
 
 	low_pass_filt_t ax_filt, ay_filt, az_filt;
 	low_pass_filt_t gx_filt, gy_filt, gz_filt;
@@ -739,10 +781,8 @@ void StartImuTask(void *argument)
 
 	  osMessageQueuePut(imuDataQueueHandle, &useable_data, 0U, osWaitForever);
 
-
 	  char msg[256U];
 	  sprintf(msg, "%f,%f,%f,%f,%f,%f,%i\r\n", accel_vec(0,0),accel_vec(1,0),accel_vec(2,0),gyro_vec(0,0),gyro_vec(1,0),gyro_vec(2,0),osKernelGetTickCount());
-	  //HAL_UART_Transmit(&huart3, (uint8_t*)msg, strlen(msg), osWaitForever);
 
     osDelay(50U);
   }
@@ -774,7 +814,6 @@ void StartStackMonitor(void *argument)
 			   (unsigned long)tests_hwm,
 			   (unsigned long)imu_hwm,
 			   (unsigned long)monitor_hwm);
-	  //HAL_UART_Transmit(&huart3, (uint8_t*)msg, strlen(msg), 1000U);
 
 	  osDelay(100U);
   }
