@@ -68,9 +68,9 @@ int32_t IMU::calibrate(float* (*getIMUdat)(), IMU_calibs_t* params, uint32_t sam
 	float gy_avg = gy_sum / (float)samples;
 	float gz_avg = gz_sum / (float)samples;
 
-	params->gyro_biases(0,0) = gx_avg;
-	params->gyro_biases(1,0) = gy_avg;
-	params->gyro_biases(2,0) = gz_avg;
+	params->gyro_biases(0,0) += gx_avg;
+	params->gyro_biases(1,0) += gy_avg;
+	params->gyro_biases(2,0) += gz_avg;
 
 	float roll  = atan2f(ay_avg, az_avg);
 	float pitch = atan2f(-ax_avg, sqrtf(ay_avg * ay_avg + az_avg * az_avg));
