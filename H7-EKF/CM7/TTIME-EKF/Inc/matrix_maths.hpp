@@ -10,6 +10,7 @@
 #define EKF_MAT_MATHS_HPP
 
 #include <cstdint>
+#include <cmath>
 
 namespace EKF{
 template<int ROWS, int COLS>
@@ -51,10 +52,6 @@ Matrix<N,1> back_sub(const SquareMatrix<N>& L, const Matrix<N,1>& y);
 
 template<int N>
 SquareMatrix<N> mat_inv_spd(const SquareMatrix<N>& A);
-
-
-template<int M, int N>
-SquareMatrix<M> propagate_covariance(const Matrix<M,N>& jac, const SquareMatrix<N>& cov);
 
 template<int N>
 SquareMatrix<N> Identity();
@@ -185,17 +182,17 @@ SquareMatrix<N> mat_inv_spd(const SquareMatrix<N>& A)
 
 template<int M, int N>
 SquareMatrix<M> propagate_covariance(const Matrix<M,N>& jac, const SquareMatrix<N>& cov){
-	return mat_mult<M,N,M>(mat_mult<M,N,M>(jac, cov), mat_transpose<M,N>(jac));
+    return mat_mult<M,N,M>(mat_mult<M,N,N>(jac, cov), mat_transpose<M,N>(jac));
 }
 
 template<int STATE_DIM, int MEAS_DIM>
 Matrix<STATE_DIM, MEAS_DIM> compute_kalman_gain(
 		SquareMatrix<STATE_DIM>cov,
 		SquareMatrix<MEAS_DIM> innov_cov,
-		Matrix<STATE_DIM,MEAS_DIM> jac_H
+		Matrix<MEAS_DIM,STATE_DIM> jac_H
 ) {
 	SquareMatrix<MEAS_DIM> innov_cov_inv = mat_inv_spd(innov_cov);
-	Matrix<MEAS_DIM, STATE_DIM> jac_T = mat_transpose(jac_H);
+	Matrix<STATE_DIM, MEAS_DIM> jac_T = mat_transpose(jac_H);
 	return mat_mult(mat_mult(cov, jac_T), innov_cov_inv);
 }
 

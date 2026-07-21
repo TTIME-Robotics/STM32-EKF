@@ -61,6 +61,13 @@ public:
 	);
 
 	/**
+	 * @brief Update velocity to 0 during known standstill
+	 * @param timestamp The current tick to be stored as estimate timestep
+	 * @return EKF_SUCCESS if successful, EKF_ERR if not
+	 */
+	int32_t ZUPT(uint32_t timestamp);
+
+	/**
 	 * @brief Set the state of the filter
 	 * @param state State to set to
 	 * @param state_cov The covariance of this state
@@ -99,6 +106,7 @@ public:
 	 * @return The timestamp
 	 */
 	uint32_t get_estimate_timestamp() const;
+
 private:
 	State_t state_estimate; // x, current state estimate
 	SquareMatrix<STATE_N> state_covariance; // P, current state covariance
