@@ -17,6 +17,8 @@
 
 namespace EKF::Camera {
 
+	// Tag registry and types
+
 	typedef struct {
 		float position_x;
 		float position_y;
@@ -34,7 +36,7 @@ namespace EKF::Camera {
 		float yaw;
 		float roll;
 		int ID;
-		float certainty;
+		float area_px;
 	} Tag_frame_t;
 
 	typedef struct {
@@ -68,26 +70,54 @@ namespace EKF::Camera {
 
 	Tag_candidates_t lookup_tag(uint8_t id);
 
-	Pose_t tag_to_robot_frame(const Tag_frame_t* frame, const Camera_orientation_t* cam_ori);
+	// --
 
-	 // For one candidate goal, compute Mahalanobis distance given current filter state
-	float mahalanobis_distance(const EK_filter* filter,
-								 const Tag_pose_t& candidate,
-								 const Pose_t& observed_robot_frame_pose,
-								 Matrix& out_H,   // stash H, S, R etc if selected — avoids recompute
-								 Matrix& out_S);
+	/**
+	 * @brief Use a tag frame to update the EKF
+	 * @param filter
+	 * @param frame
+	 * @param orientation
+	 * @param timestamp
+	 * @return
+	 */
+	int32_t update_with_tag(EK_filter* filter,
+			const Tag_frame_t& frame,
+			const Camera_orientation_t& orientation,
+			uint32_t timestamp);
 
-	// Returns index into candidates, or -1 if rejected (no confident association)
-	int select_best_goal(const EK_filter* filter,
-						  const Tag_candidates_t& candidates,
-						  const Pose_t& observed_robot_frame_pose,
-						  float chi2_gate,
-						  float min_gap);
+	/**
+	 * @brief Get robot pose from a specific tag
+	 * @param obsvd_frame
+	 * @param cam_ori
+	 * @param obsvd_tag_pose
+	 * @param pose_out
+	 * @return
+	 */
+	int32_t robot_pose_from_tag(const Tag_frame_t& obsvd_frame,
+			const Camera_orientation_t& cam_ori,
+			const Tag_pose_t& obsvd_tag_pose,
+			Pose_t& pose_out);
 
-	int32_t update_tag(EK_filter* filter,
-			const Tag_frame_t* frame,
-			Camera_orientation_t* orientation,
-			int32_t timestamp);
+	/**
+	 * @brief Calculated the square mahalanobis distance
+	 * How many std deviations from the expected pose and distrubution
+	 * @param filter
+	 * @param proposed_pose
+	 * @param pose_cov
+	 * @return
+	 */
+	float mahalanobis2_dist(const EK_filter* filter,
+			const Pose_t& proposed_pose,
+			const SquareMatrix<3>& pose_cov);
+
+	// -- Helper functions
+
+	/**
+	 * @brief Convert area of tag to pose covariance
+	 * @param area_px
+	 * @return
+	 */
+	SquareMatrix<3> tag_area_to_cov(float area_px);
 
 }
 
