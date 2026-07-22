@@ -48,7 +48,34 @@ Pose_t tag_frame_to_robot(const Tag_frame_t& frame, const Camera_orientation_t* 
 float mahalanobis2_dist(const EK_filter* filter,
 		const Pose_t& proposed_pose,
 		const SquareMatrix<3>& pose_cov) {
+	Pose_t pose_est = filter->get_pose();
+	Vector<3> innov = {
+			.data {
+				proposed_pose.position_x - pose_est.position_x,
+				proposed_pose.position_y - pose_est.position_y,
+				proposed_pose.heading - pose_est.heading,
+			}
+	};
 
+	while (innov(2,0) > PI) innov(2,0) -= 2.0f * PI;
+	while (innov(2,0) < -PI) innov(2,0) += 2.0f*PI;
+
+	SquareMatrix<6> state_cov = filter->get_state_cov();
+	SquareMatrix<3> extracted_state_cov = {
+			.data {
+				state_cov(0,0), state_cov(0,1), state_cov(0,4),
+				state_cov(1,0), state_cov(1,1), state_cov(1,4),
+				state_cov(4,0), state_cov(4,1), state_cov(4,4)
+			}
+	};
+
+	SquareMatrix<3> S = mat_add(extracted_state_cov, pose_cov);
+	SquareMatrix<3> S_inv = mat_inv_spd(S);
+
+	Matrix<1,3> innov_T = mat_transpose(innov);
+	Matrix<1,1> d2 = mat_mult(mat_mult(innov_T, S_inv), innov);
+
+	return d2(0,0);
 }
 
 // This definitely needs tuning.
