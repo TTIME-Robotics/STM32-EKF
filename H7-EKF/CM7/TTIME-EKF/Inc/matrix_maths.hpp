@@ -204,5 +204,51 @@ SquareMatrix<N> Identity() {
 	}
 	return out;
 }
+
+inline SquareMatrix<3> rot_mat_X(float angle) {
+	float s = sinf(angle);
+	float c = cosf(angle);
+	SquareMatrix<3> rot_mat = {
+			.data {
+				1, 0, 0,
+				0, c, -s,
+				0, s, c
+
+			}
+	};
+	return rot_mat;
+}
+
+inline SquareMatrix<3> rot_mat_Y(float angle) {
+	float s = sinf(angle);
+	float c = cosf(angle);
+	SquareMatrix<3> rot_mat = {
+			.data {
+				c, 0, s,
+				0, 1, 0,
+				-s, 0, c
+
+			}
+	};
+	return rot_mat;
+}
+inline SquareMatrix<3> rot_mat_Z(float angle) {
+	float s = sinf(angle);
+	float c = cosf(angle);
+	SquareMatrix<3> rot_mat = {
+			.data {
+				c, -s, 0,
+				s, c, 0,
+				0, 0, 1
+
+			}
+	};
+	return rot_mat;
+}
+
+inline SquareMatrix<3> euler_to_trans(float pitch, float yaw, float roll) {
+	return mat_mult(mat_mult(rot_mat_Z(yaw), rot_mat_Y(pitch)), rot_mat_X(roll));
+}
+
 }
 #endif // EKF_MAT_MATHS_HPP
