@@ -29,13 +29,13 @@ int32_t update_with_tag(EK_filter* filter,
 			const Tag_frame_t& frame,
 			const Camera_orientation_t& orientation,
 			uint32_t timestamp) {
-	int32_t result = EKF_SUCCESS
-	if (filter == NULL) {
-		result = EKF_ERR;
+	int32_t result = EKF_ERR;
+	if (filter != NULL) {
+		// tag_frame_to_robot()
+		// calculate jacobian and noise
+		// filter->update(innovation, jac_H, sensor_noise, timestamp)
+		result = EKF_SUCCESS;
 	}
-	// tag_frame_to_robot()
-	// calculate jacobian and noise
-	// filter->update(innovation, jac_H, sensor_noise, timestamp)
 	return result;
 }
 
