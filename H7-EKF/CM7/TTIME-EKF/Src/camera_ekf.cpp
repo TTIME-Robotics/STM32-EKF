@@ -51,7 +51,34 @@ float mahalanobis2_dist(const EK_filter* filter,
 
 }
 
+// This definitely needs tuning.
 SquareMatrix<3> tag_area_to_cov(float area_px) {
+	// Clamp area
+	const float MIN_AREA = 25.0f; // 25 px
+	if (area_px < MIN_AREA) area_px = MIN_AREA;
+
+	// Assuming reliable tag detection (large px area)
+	// Whats the min std. dev. of translation
+	const float SIGMA_POS_FLOOR = 0.25f;  // inches
+	const float SIGMA_YAW_FLOOR = 0.01f;  // radians
+	// Scaling std dev with shrinking tag areas
+	const float K_POS = 40.0f;
+	const float K_YAW = 1.8f;
+
+	float inv_sqrt_area = 1.0f / sqrtf(area_px);
+
+	float sigma_pos = SIGMA_POS_FLOOR + K_POS * inv_sqrt_area;
+	float sigma_yaw = SIGMA_YAW_FLOOR + K_YAW * inv_sqrt_area;
+
+	SquareMatrix<3> R_pos = {
+			.data {
+				sigma_pos*sigma_pos, 0, 0,
+				0, sigma_pos*sigma_pos, 0,
+				0, 0, sigma_yaw*sigma_yaw
+			}
+	};
+
+	return R_pos;
 }
 
 
