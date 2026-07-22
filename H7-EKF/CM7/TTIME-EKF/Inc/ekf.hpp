@@ -98,6 +98,12 @@ public:
 	 * @return The timestamp
 	 */
 	uint32_t get_estimate_timestamp() const;
+
+	/**
+	 * @brief Get the state covariance matrix
+	 * @return The state covariance matrix
+	 */
+	SquareMatrix<STATE_N> get_state_cov() const;
 private:
 	State_t state_estimate; // x, current state estimate
 	SquareMatrix<STATE_N> state_covariance; // P, current state covariance

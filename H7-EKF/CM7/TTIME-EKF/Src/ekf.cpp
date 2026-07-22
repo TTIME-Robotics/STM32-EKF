@@ -109,3 +109,7 @@ uint32_t EK_filter::get_last_predict_timestamp() const {
 uint32_t EK_filter::get_estimate_timestamp() const {
 	return estimate_timestamp;
 }
+
+SquareMatrix<STATE_N> EK_filter::get_state_cov() const {
+	return state_covariance;
+}
