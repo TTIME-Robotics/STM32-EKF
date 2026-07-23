@@ -15,6 +15,8 @@
 #include <iostream>
 #include <unordered_map>
 
+// TODO: Update comments
+
 namespace EKF::Camera {
 
 	// Tag registry and types
@@ -35,7 +37,7 @@ namespace EKF::Camera {
 		float pitch;
 		float yaw;
 		float roll;
-		int ID;
+		uint8_t ID;
 		float area_px;
 	} Tag_frame_t;
 
@@ -66,6 +68,9 @@ namespace EKF::Camera {
 	    const Tag_entry_t* begin;
 	    const Tag_entry_t* end;
 	    size_t count() const { return end - begin; }
+	    const Tag_entry_t& operator[](size_t idx) const {
+	    	return begin[idx];
+	    }
 	};
 
 	Tag_candidates_t lookup_tag(uint8_t id);
@@ -84,6 +89,13 @@ namespace EKF::Camera {
 			const Tag_frame_t& frame,
 			const Camera_orientation_t& orientation,
 			uint32_t timestamp);
+
+	int32_t tag_frame_to_robot(Pose_t& pose_out,
+			Vector<3>& innov_out,
+			SquareMatrix<3>& noise_out,
+			const Tag_frame_t& frame,
+			const Camera_orientation_t& cam_ori,
+			const EK_filter* filter);
 
 	/**
 	 * @brief Get robot pose from a specific tag
@@ -108,7 +120,9 @@ namespace EKF::Camera {
 	 */
 	float mahalanobis2_dist(const EK_filter* filter,
 			const Pose_t& proposed_pose,
-			const SquareMatrix<3>& pose_cov);
+			const SquareMatrix<3>& pose_cov,
+			Vector<3>& innov_out,
+			SquareMatrix<3>& noise_out);
 
 	// -- Helper functions
 

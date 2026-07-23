@@ -17,7 +17,7 @@ using namespace EKF;
 using namespace EKF::Camera;
 
 
-Tag_candidates_t lookup_tag(uint8_t id) {
+Tag_candidates_t EKF::Camera::lookup_tag(uint8_t id) {
     auto lo = std::lower_bound(std::begin(tag_table), std::end(tag_table), id,
         [](const Tag_entry_t& e, uint8_t v) { return e.id < v; });
     auto hi = std::upper_bound(std::begin(tag_table), std::end(tag_table), id,
@@ -31,18 +31,58 @@ int32_t update_with_tag(EK_filter* filter,
 			uint32_t timestamp) {
 	int32_t result = EKF_ERR;
 	if (filter != NULL) {
+		// (Crudely) integrate to current time
+		filter->integrate_to_now(timestamp);
 		// tag_frame_to_robot()
-		// calculate jacobian and noise
-		// filter->update(innovation, jac_H, sensor_noise, timestamp)
+		Pose_t new_pose; Vector<3> innov; SquareMatrix<3> noise;
+		int32_t infer_res = tag_frame_to_robot(new_pose, innov, noise, frame, orientation, filter);
+		if (infer_res > 0) {
+			// Calculate jacobian
+			Matrix<3,6> jac_H = {
+					.data {
+						1, 0, 0, 0, 0, 0,
+						0, 1, 0, 0, 0, 0,
+						0, 0, 0, 0, 1, 0
+					}
+			};
+			filter->update<3>(innov, jac_H, noise, timestamp);
+		}
 		result = EKF_SUCCESS;
 	}
 	return result;
 }
 
-Pose_t tag_frame_to_robot(const Tag_frame_t& frame, const Camera_orientation_t* cam_ori){
-	// Find candidates
-	// For each, calculate poses and mahalanobis distances (using area)
+int32_t tag_frame_to_robot(Pose_t& pose_out,
+		Vector<3>& innov_out,
+		SquareMatrix<3>& noise_out,
+		const Tag_frame_t& frame,
+		const Camera_orientation_t& cam_ori,
+		const EK_filter* filter){
+	Tag_candidates_t all_tags = lookup_tag((uint8_t)frame.ID);
+	if (all_tags.count() < 1) return 0;
+	float lowest_d2 = infinityf();
+	Tag_entry_t most_likely_tag;
+	for (size_t i=0; i<all_tags.count(); ++i) {
+		Pose_t tmp_pose;
+		robot_pose_from_tag(frame, cam_ori, all_tags[i].pose, tmp_pose);
+		// For each, calculate poses and mahalanobis distances (using area)
+		SquareMatrix<3> inferred_pose_cov = tag_area_to_cov(frame.area_px);
+		Vector<3> tmp_innov; SquareMatrix<3> tmp_noise;
+		float new_d2 = mahalanobis2_dist(filter,
+				tmp_pose,
+				inferred_pose_cov,
+				tmp_innov,
+				tmp_noise);
+		if (new_d2 < lowest_d2) {
+			lowest_d2 = new_d2;
+			most_likely_tag = all_tags[i];
+			innov_out = tmp_innov;
+			noise_out = tmp_noise;
+			pose_out = tmp_pose;
+		}
+	}
 	// Select best and return
+	return EKF_SUCCESS;
 }
 
 int32_t robot_pose_from_tag(const Tag_frame_t& obsvd_frame,
@@ -110,7 +150,9 @@ int32_t robot_pose_from_tag(const Tag_frame_t& obsvd_frame,
 
 float mahalanobis2_dist(const EK_filter* filter,
 		const Pose_t& proposed_pose,
-		const SquareMatrix<3>& pose_cov) {
+		const SquareMatrix<3>& pose_cov,
+		Vector<3>& innov_out,
+		SquareMatrix<3>& noise_out) {
 	Pose_t pose_est = filter->get_pose();
 	Vector<3> innov = {
 			.data {
@@ -123,6 +165,8 @@ float mahalanobis2_dist(const EK_filter* filter,
 	while (innov(2,0) > PI) innov(2,0) -= 2.0f * PI;
 	while (innov(2,0) < -PI) innov(2,0) += 2.0f*PI;
 
+	innov_out = innov;
+
 	SquareMatrix<6> state_cov = filter->get_state_cov();
 	SquareMatrix<3> extracted_state_cov = {
 			.data {
@@ -133,6 +177,7 @@ float mahalanobis2_dist(const EK_filter* filter,
 	};
 
 	SquareMatrix<3> S = mat_add(extracted_state_cov, pose_cov);
+	noise_out = S;
 	SquareMatrix<3> S_inv = mat_inv_spd(S);
 
 	Matrix<1,3> innov_T = mat_transpose(innov);
