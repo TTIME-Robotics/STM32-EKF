@@ -60,6 +60,13 @@ public:
 	);
 
 	/**
+	 * @brief Use state to (crudely) integrate to given time
+	 * @param time Time to integrate to
+	 * @return EKF_SUCCESS if successful, EKF_ERR if not
+	 */
+	int32_t integrate_to_now(const uint32_t time);
+
+	/**
 	 * @brief Set the state of the filter
 	 * @param state State to set to
 	 * @param state_cov The covariance of this state
