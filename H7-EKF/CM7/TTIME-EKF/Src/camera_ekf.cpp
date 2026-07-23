@@ -45,6 +45,69 @@ Pose_t tag_frame_to_robot(const Tag_frame_t& frame, const Camera_orientation_t* 
 	// Select best and return
 }
 
+int32_t robot_pose_from_tag(const Tag_frame_t& obsvd_frame,
+			const Camera_orientation_t& cam_ori,
+			const Tag_pose_t& obsvd_tag_pose,
+			Pose_t& pose_out) {
+	/*
+	 * -- Notation --
+	 * rotation_object_frame (3x3 matrix)
+	 * position_object_frame (1x3 vector)
+	 * vector_from_to_frame (1x3 vector)
+	 */
+	// Get robot rotation matrix from relative rotations
+	SquareMatrix<3> rotation_tag_world =
+			euler_to_trans(obsvd_tag_pose.pitch,
+					obsvd_tag_pose.yaw,
+					obsvd_tag_pose.roll);
+	SquareMatrix<3> rotation_tag_cam =
+			euler_to_trans(obsvd_frame.pitch, obsvd_frame.yaw, obsvd_frame.roll);
+	SquareMatrix<3> rotation_cam_robot =
+			euler_to_trans(cam_ori.pitch, cam_ori.yaw, cam_ori.roll);
+
+	SquareMatrix<3> rotation_tag_cam_T = mat_transpose(rotation_tag_cam);
+	SquareMatrix<3> rotation_cam_robot_T = mat_transpose(rotation_cam_robot);
+
+	SquareMatrix<3> rotation_robot_tag = mat_mult(rotation_tag_cam_T, rotation_cam_robot_T);
+	SquareMatrix<3> rotation_robot_world = mat_mult(rotation_tag_world, rotation_robot_tag); // Desired
+
+	// Get world-relative robot position
+	Vector<3> vector_cam_tag_cam = {
+			.data {
+				obsvd_frame.vec_x,
+				obsvd_frame.vec_y,
+				obsvd_frame.vec_z
+			}
+	};
+	Vector<3> vector_cam_tag_world =
+			mat_mult(mat_mult(rotation_robot_world, rotation_cam_robot), vector_cam_tag_cam);
+	Vector<3> vector_robot_cam_robot = {
+			.data {
+				cam_ori.position_x,
+				cam_ori.position_y,
+				cam_ori.position_z
+			}
+	};
+	Vector<3> vector_robot_cam_world =
+			mat_mult(rotation_robot_world, vector_robot_cam_robot);
+
+	Vector<3> vector_robot_tag_world = mat_add(vector_robot_cam_world, vector_cam_tag_world);
+	Vector<3> tag_position = {
+			.data {
+				obsvd_tag_pose.pos_x,
+				obsvd_tag_pose.pos_y,
+				obsvd_tag_pose.pos_z
+			}
+	};
+	Vector<3> robot_position = mat_sub(tag_position, vector_robot_tag_world);
+
+	pose_out.position_x = robot_position(0,0);
+	pose_out.position_y = robot_position(1,0);
+	pose_out.heading = atan2f(rotation_robot_world(1,0), rotation_robot_world(0,0));
+
+	return EKF_SUCCESS;
+}
+
 float mahalanobis2_dist(const EK_filter* filter,
 		const Pose_t& proposed_pose,
 		const SquareMatrix<3>& pose_cov) {
