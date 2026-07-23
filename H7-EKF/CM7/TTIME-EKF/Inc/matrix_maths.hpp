@@ -11,6 +11,7 @@
 
 #include <cstdint>
 #include <cmath>
+#include <vector>
 
 namespace EKF{
 template<int ROWS, int COLS>
@@ -55,6 +56,9 @@ SquareMatrix<N> mat_inv_spd(const SquareMatrix<N>& A);
 
 template<int N>
 SquareMatrix<N> Identity();
+
+template<int N>
+SquareMatrix<N> Diag(std::vector<float> nums);
 
 
 
@@ -250,5 +254,13 @@ inline SquareMatrix<3> euler_to_trans(float pitch, float yaw, float roll) {
 	return mat_mult(mat_mult(rot_mat_Z(yaw), rot_mat_Y(pitch)), rot_mat_X(roll));
 }
 
+template<int N>
+SquareMatrix<N> Diag(std::vector<float> nums) {
+	SquareMatrix<N> mat;
+	for (int i=0; i<N; ++i) {
+		mat(i,i) = nums[i];
+	}
+	return mat;
+}
 }
 #endif // EKF_MAT_MATHS_HPP
