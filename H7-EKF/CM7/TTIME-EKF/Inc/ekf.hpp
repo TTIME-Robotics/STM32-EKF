@@ -65,7 +65,14 @@ public:
 	 * @param timestamp The current tick to be stored as estimate timestep
 	 * @return EKF_SUCCESS if successful, EKF_ERR if not
 	 */
-	int32_t ZUPT(uint32_t timestamp);
+	int32_t ZUPT(const uint32_t timestamp);
+
+	/**
+	 * @brief Use state to (crudely) integrate to given time
+	 * @param time Time to integrate to
+	 * @return EKF_SUCCESS if successful, EKF_ERR if not
+	 */
+	int32_t integrate_to_now(const uint32_t time);
 
 	/**
 	 * @brief Set the state of the filter

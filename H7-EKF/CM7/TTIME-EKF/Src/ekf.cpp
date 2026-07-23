@@ -35,7 +35,7 @@ int32_t EK_filter::predict(
 
 // EK_filter::update in .tpp file
 
-int32_t EK_filter::ZUPT(uint32_t timestamp) {
+int32_t EK_filter::ZUPT(const uint32_t timestamp) {
 	Vector<2> innov;
 	innov(0,0) = -state_estimate.velocity_u;
 	innov(1,0) = -state_estimate.velocity_v;
@@ -52,6 +52,29 @@ int32_t EK_filter::ZUPT(uint32_t timestamp) {
 			}
 	};
 	return update<2>(innov, jac_H, noise, timestamp);
+}
+
+int32_t EK_filter::integrate_to_now(const uint32_t time) {
+	float dt = (time - estimate_timestamp) / 1000.0f;
+	float c = cosf(state_estimate.angle);
+	float s = sinf(state_estimate.angle);
+	SquareMatrix<STATE_N> A = {
+			.data {
+				0, 0, dt*c, -dt*s, 0, 0,
+				0, 1, dt*s,  dt*c, 0, 0,
+				0, 0, 1, 0, 0, 0,
+				0, 0, 0, 1, 0, 0,
+				0, 0, 0, 0, 1, dt,
+				0, 0, 0, 0, 0, 1
+			}
+	};
+	Vector<STATE_N> new_state = mat_mult(A, get_state_mat());
+	SquareMatrix<STATE_N> process_noise = Diag<STATE_N>(
+			{1e-3, 1e-3, 0.25, 0.25, 1e-4, 9}
+	);
+	SquareMatrix<STATE_N> new_cov = mat_add(state_covariance, process_noise);
+	set_state(new_state, new_cov);
+	return EKF_SUCCESS;
 }
 
 void EK_filter::set_state(const State_t state, const SquareMatrix<STATE_N>& state_cov) {
